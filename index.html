@@ -192,6 +192,94 @@
     height: 145px;
   }
 
+
+  /* กล่องแสดง Combo ในแผงสถิติ */
+  #comboVal {
+    transition: color 0.2s, transform 0.2s;
+  }
+
+  /* หน้าต่างตั้งค่าเสียงและเอฟเฟกต์ */
+  .settings-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: 100%;
+    margin: 14px 0;
+    text-align: left;
+  }
+  .settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.04);
+    border-radius: 8px;
+    border: 1px solid var(--border-soft);
+  }
+  .settings-label {
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-main);
+  }
+  .settings-sublabel {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+  .switch-label {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+  .switch-label input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+  }
+  .switch-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #4a5163;
+    transition: .25s;
+    border-radius: 24px;
+  }
+  .switch-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .25s;
+    border-radius: 50%;
+  }
+  input:checked + .switch-slider {
+    background-color: var(--accent);
+  }
+  input:checked + .switch-slider:before {
+    transform: translateX(20px);
+  }
+  .volume-slider-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    margin-top: 8px;
+  }
+  .volume-slider {
+    flex: 1;
+    height: 6px;
+    border-radius: 3px;
+    background: #4a5163;
+    outline: none;
+    accent-color: var(--accent);
+  }
+
   /* กรอบกระดานหลัก */
   .board-container {
     position: relative;
@@ -206,11 +294,11 @@
     padding: 4px;
     border: 2px solid rgba(255,255,255,0.1);
     box-shadow: 0 10px 28px rgba(0,0,0,0.5), inset 0 2px 6px rgba(0,0,0,0.6);
+    overflow: hidden;
+    transition: box-shadow 0.25s ease-out, border-color 0.25s ease-out;
   }
 
   #boardCanvas {
-    width: 100%;
-    height: 100%;
     display: block;
     border-radius: 8px;
   }
@@ -565,7 +653,6 @@
       <button id="btnSound" class="btn-icon" title="เสียง">🔊 เสียง</button>
       <button id="btnPause" class="btn-icon" title="พัก">⏸ พัก</button>
       <button id="btnRestartTop" class="btn-icon" title="เริ่มใหม่">🔄 เริ่มใหม่</button>
-      <button id="btnConfig" class="btn-icon" title="ตั้งค่า Sheet">⚙️</button>
     </div>
   </header>
 
@@ -592,6 +679,10 @@
       <div class="panel-box">
         <div class="panel-title">LINES</div>
         <div id="linesVal" class="panel-value">0</div>
+      </div>
+      <div id="comboPanelBox" class="panel-box">
+        <div class="panel-title">COMBO</div>
+        <div id="comboVal" class="panel-value highlight">×0</div>
       </div>
     </aside>
 
@@ -656,6 +747,7 @@
     <h2 class="modal-title">พักการเล่นชั่วคราว</h2>
     <p class="modal-subtitle">เวลาถูกหยุดไว้ชั่วคราว</p>
     <button id="btnResumeGame" class="btn-primary">▶ เล่นต่อ (Resume)</button>
+    <button id="btnSettingsFromPause" class="btn-secondary">⚙️ ตั้งค่าเสียง & เอฟเฟกต์</button>
     <button id="btnRestartFromPause" class="btn-secondary">🔄 เริ่มเกมใหม่ (โหมดเดิม)</button>
     <button id="btnChangeModeFromPause" class="btn-secondary">🎮 เปลี่ยนโหมดการเล่น</button>
   </div>
@@ -712,19 +804,148 @@
   </div>
 </div>
 
-<!-- หน้าจอตั้งค่า URL ของ Google Apps Script -->
-<div id="configOverlay" class="overlay hidden">
+
+<!-- หน้าจอตั้งค่าเสียงและเอฟเฟกต์ -->
+<div id="settingsOverlay" class="overlay hidden">
   <div class="modal-card">
-    <h3 class="modal-title" style="font-size:1.2rem;">ตั้งค่า Google Apps Script URL</h3>
-    <p class="modal-subtitle">วาง Web App URL เพื่อเชื่อมต่อกับ Google Sheet</p>
-    <input type="url" id="scriptUrlInput" class="form-input" placeholder="https://script.google.com/macros/s/AKfycbwfbKBwoLAMc3ss7OFV3gcgt2yhyMaR9uxhSRw_9ZVMzfmSzAYpnm_eYED8ITzuXKJI/exec">
-    <button id="btnSaveConfig" class="btn-primary">💾 บันทึก URL</button>
-    <button id="btnCloseConfig" class="btn-secondary">ปิดหน้าต่าง</button>
+    <h2 class="modal-title">🔊 เสียงและเอฟเฟกต์</h2>
+    <p class="modal-subtitle">ตั้งค่าเสียง BGM, SFX และเอฟเฟกต์ภาพ</p>
+
+    <div class="settings-group">
+      <!-- BGM Switch & Volume -->
+      <div class="settings-row" style="flex-direction: column; align-items: stretch;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div class="settings-label">🎵 เพลงประกอบ (BGM)</div>
+            <div class="settings-sublabel">Chiptune 8-bit ปรับจังหวะตามความตึงเครียด</div>
+          </div>
+          <label class="switch-label">
+            <input type="checkbox" id="chkToggleBgm" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="volume-slider-box">
+          <span style="font-size:0.75rem; color:var(--text-muted); min-width:40px;">ระดับ:</span>
+          <input type="range" id="sliderBgmVolume" class="volume-slider" min="0" max="100" value="40">
+          <span id="txtBgmVolume" style="font-size:0.75rem; min-width:32px; text-align:right;">40%</span>
+        </div>
+      </div>
+
+      <!-- SFX Switch & Volume -->
+      <div class="settings-row" style="flex-direction: column; align-items: stretch;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div class="settings-label">🔊 เอฟเฟกต์เสียง (SFX)</div>
+            <div class="settings-sublabel">เสียงเลื่อน หมุน ล็อก ล้างแถว Combo ระเบิด</div>
+          </div>
+          <label class="switch-label">
+            <input type="checkbox" id="chkToggleSfx" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="volume-slider-box">
+          <span style="font-size:0.75rem; color:var(--text-muted); min-width:40px;">ระดับ:</span>
+          <input type="range" id="sliderSfxVolume" class="volume-slider" min="0" max="100" value="60">
+          <span id="txtSfxVolume" style="font-size:0.75rem; min-width:32px; text-align:right;">60%</span>
+        </div>
+      </div>
+
+      <!-- Reduced Effects -->
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">✨ ลดเอฟเฟกต์ (Reduced Effects)</div>
+          <div class="settings-sublabel">ปิดจอสั่นและแฟลชขาว ลดเศษไม้ (สำหรับผู้เวียนหัวง่าย)</div>
+        </div>
+        <label class="switch-label">
+          <input type="checkbox" id="chkReducedEffects">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <button id="btnCloseSettings" class="btn-primary">ตกลง / ปิดหน้าต่าง</button>
   </div>
 </div>
 
 <script>
-const DEFAULT_GOOGLE_SCRIPT_URL = "";
+
+(() => {
+  'use strict';
+
+  // ==========================================
+  // ระบบป้องกันการลอกเลียนแบบและการดัดแปลงสคริปต์ (Anti-Tamper & Security Suite)
+  // ==========================================
+  function initSecurityProtection() {
+    // 1. ปิดคลิกขวา (Context Menu) ทั่วทั้งหน้าเกม
+    document.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      return false;
+    }, { capture: true });
+
+    // 2. ปิดการลาก (Drag) องค์ประกอบ กราฟิก และบล็อกในเกม
+    document.addEventListener('dragstart', (e) => {
+      e.preventDefault();
+      return false;
+    }, { capture: true });
+
+    // 3. ป้องกันการคลุมดำ/ไฮไลต์ข้อความ (ยกเว้นช่องกรอก Feedback และชื่อผู้เล่น)
+    document.addEventListener('selectstart', (e) => {
+      const tag = e.target.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return true;
+      e.preventDefault();
+      return false;
+    });
+
+    // 4. บล็อกปุ่มลัดตรวจดู Source Code และเปิด Developer Tools
+    // บล็อก F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C, Ctrl+U, Ctrl+S, Ctrl+P (รวมถึง Command บน Mac)
+    window.addEventListener('keydown', (e) => {
+      const isCtrlOrMeta = e.ctrlKey || e.metaKey;
+      const isShift = e.shiftKey;
+      const key = e.key ? e.key.toLowerCase() : '';
+      const code = e.code || '';
+
+      if (
+        e.keyCode === 123 || // F12
+        key === 'f12' ||
+        (isCtrlOrMeta && isShift && (key === 'i' || key === 'j' || key === 'c' || code === 'KeyI' || code === 'KeyJ' || code === 'KeyC')) ||
+        (isCtrlOrMeta && (key === 'u' || key === 's' || key === 'p' || code === 'KeyU' || code === 'KeyS' || code === 'KeyP'))
+      ) {
+        e.preventDefault();
+        e.stopPropagation();
+        return false;
+      }
+    }, { capture: true });
+
+    // 5. แสดงข้อความเตือนความปลอดภัยใน Console
+    try {
+      const titleStyle = 'color: #ff3b1e; font-size: 20px; font-weight: 900; text-shadow: 0 0 8px rgba(255,59,30,0.5);';
+      const textStyle = 'color: #f3f5f8; font-size: 13px; font-weight: bold; background: #222630; padding: 6px 10px; border-radius: 4px;';
+      console.log('%c⛔ คำเตือนด้านความปลอดภัย & ลิขสิทธิ์', titleStyle);
+      console.log('%cระบบและซอร์สโค้ดนี้ได้รับการคุ้มครองสิทธิ์ ห้ามคัดลอก ดัดแปลง หรือเจาะระบบโดยไม่ได้รับอนุญาต', textStyle);
+    } catch (e) {}
+
+    // 6. เฝ้าระวังและล้าง Console อัตโนมัติหากมีการเปิดเครื่องมือตรวจโค้ด
+    let devToolsOpen = false;
+    const checkDevTools = () => {
+      const threshold = 160;
+      const widthDiff = window.outerWidth - window.innerWidth;
+      const heightDiff = window.outerHeight - window.innerHeight;
+      if (widthDiff > threshold || heightDiff > threshold) {
+        if (!devToolsOpen) {
+          devToolsOpen = true;
+          try { console.clear(); } catch (e) {}
+          console.log('%c⛔ ไม่อนุญาตให้เปิดเครื่องมือตรวจสอบโค้ด', 'color: #ff3b1e; font-size: 16px; font-weight: bold;');
+        }
+      } else {
+        devToolsOpen = false;
+      }
+    };
+    window.addEventListener('resize', checkDevTools);
+    setInterval(checkDevTools, 1500);
+  }
+
+// URL Google Apps Script ปลายทาง (เข้ารหัสแบบ Reverse + Base64 เพื่อป้องกันไม่ให้ผู้เล่นเห็น URL ในโค้ดโดยตรง)
+const _APP_ENDPOINT = "==wYlhXZvkkSLhVd6RVS4QURZV2Xt5GcZFkeT1mZ61kValzX3J1UohXd5IVYNlHa5JDdnN2ZzYlRPdzczNzYNFETvdnQLJmZ3J2Y5Z2SB9ycvM3byNWYt9SbvNmLlx2Zv92ZuQHcpJ3Yz9yL6MHc0RHa";
 
 const COLS = 10;
 const VISIBLE_ROWS = 20;
@@ -738,8 +959,10 @@ const DAS_MS = 150;
 const ARR_MS = 40;
 const LINE_CLEAR_ANIM_MS = 220;
 
+// ชิ้นส่วนปกติสำหรับระบบสุ่ม 7-Bag
 const PIECE_TYPES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
 
+// สีและแสงเรืองแสงของแต่ละบล็อก
 const PIECE_COLORS = {
   I: { base: '#2cb8e8', light: '#7ad8f5', dark: '#177fa3', glow: 'rgba(44, 184, 232, 0.75)' },
   O: { base: '#f5a02a', light: '#fac473', dark: '#b56d0f', glow: 'rgba(245, 160, 42, 0.75)' },
@@ -747,9 +970,11 @@ const PIECE_COLORS = {
   S: { base: '#3f9f3f', light: '#76c876', dark: '#256925', glow: 'rgba(63, 159, 63, 0.75)' },
   Z: { base: '#ff2a1a', light: '#ff7b70', dark: '#b31509', glow: 'rgba(255, 42, 26, 0.75)' },
   J: { base: '#5a7de8', light: '#96adf5', dark: '#324da3', glow: 'rgba(90, 125, 232, 0.75)' },
-  L: { base: '#e8c42c', light: '#f5df7a', dark: '#a38614', glow: 'rgba(232, 196, 44, 0.75)' }
+  L: { base: '#e8c42c', light: '#f5df7a', dark: '#a38614', glow: 'rgba(232, 196, 44, 0.75)' },
+  BOMB: { base: '#ff3b1e', light: '#ff8533', dark: '#b31800', glow: 'rgba(255, 60, 20, 0.95)' }
 };
 
+// รูปร่างของชิ้นส่วนแต่ละชิ้น (รวมบล็อกระเบิด BOMB 1x1)
 const SHAPES = {
   I: [
     [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
@@ -792,6 +1017,12 @@ const SHAPES = {
     [[0,1,0],[0,1,0],[0,1,1]],
     [[0,0,0],[1,1,1],[1,0,0]],
     [[1,1,0],[0,1,0],[0,1,0]]
+  ],
+  BOMB: [
+    [[1]],
+    [[1]],
+    [[1]],
+    [[1]]
   ]
 };
 
@@ -809,28 +1040,392 @@ const WALL_KICKS_JLSTZ = {
 const WALL_KICKS_I = {
   '0->1': [[0,0], [-2,0], [ 1,0], [-2, 1], [ 1,-2]],
   '1->0': [[0,0], [ 2,0], [-1,0], [ 2,-1], [-1, 2]],
-  '1->2': [[0,0], [-1,0], [ 2,0], [-1,-2], [ 2, 1]],
-  '2->1': [[0,0], [ 1,0], [-2,0], [ 1, 2], [-2,-1]],
+  '1->2': [[0,0], [-1,0], [ 2,0], [-1, 2], [ 2,-1]],
+  '2->1': [[0,0], [ 1,0], [-2,0], [ 1,-2], [-2, 1]],
   '2->3': [[0,0], [ 2,0], [-1,0], [ 2,-1], [-1, 2]],
   '3->2': [[0,0], [-2,0], [ 1,0], [-2, 1], [ 1,-2]],
-  '3->0': [[0,0], [ 1,0], [-2,0], [ 1, 2], [-2,-1]],
-  '0->3': [[0,0], [-1,0], [ 2,0], [-1,-2], [ 2, 1]]
+  '3->0': [[0,0], [ 1,0], [-2,0], [ 1,-2], [-2, 1]],
+  '0->3': [[0,0], [-1,0], [ 2,0], [-1, 2], [ 2,-1]]
 };
 
-class SoundFX {
+// ==========================================
+// ระบบเสียง Web Audio API (BGM & SFX)
+// ==========================================
+class AudioManager {
   constructor() {
     this.ctx = null;
-    this.enabled = true;
+    this.masterGain = null;
+    this.bgmGain = null;
+    this.sfxGain = null;
+    this.bgmFilter = null;
+    this.noiseBuffer = null;
+
+    // การตั้งค่าเสียงและบันทึกลง localStorage
+    this.bgmEnabled = true;
+    this.sfxEnabled = true;
+    this.bgmVolume = 0.4;
+    this.sfxVolume = 0.6;
+    try {
+      const bEn = localStorage.getItem('tetris_wood_bgm_enabled');
+      if (bEn !== null) this.bgmEnabled = (bEn === 'true');
+      const sEn = localStorage.getItem('tetris_wood_sfx_enabled');
+      if (sEn !== null) this.sfxEnabled = (sEn === 'true');
+      const bVol = localStorage.getItem('tetris_wood_bgm_volume');
+      if (bVol !== null) this.bgmVolume = parseFloat(bVol);
+      const sVol = localStorage.getItem('tetris_wood_sfx_volume');
+      if (sVol !== null) this.sfxVolume = parseFloat(sVol);
+    } catch (e) {}
+
+    // ตัวแปรสำหรับ Lookahead Scheduler ของ BGM
+    this.isPlayingBgm = false;
+    this.schedulerTimer = null;
+    this.currentStep = 0; // 0..63 (64 sixteenth notes = 8 ห้อง)
+    this.nextNoteTime = 0;
+    this.baseTempo = 120;
+    this.currentLevel = 1;
+    this.isTension = false;
+    this.isPaused = false;
+    this.isGameOver = false;
+
+    // สเกลเมเจอร์ C Major สำหรับเสียง Combo ไล่ระดับ (เพดาน 2 อ็อกเทฟ C4 - C6)
+    this.comboScale = [
+      261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88,
+      523.25, 587.33, 659.25, 698.46, 783.99, 880.00, 987.77,
+      1046.50
+    ];
+
+    // โน้ตเพลง Chiptune ดั้งเดิม 8 ห้อง (Original Melody, Bass)
+    this.melodyNotes = [
+      // ห้อง 1 (Am)
+      440, 0, 523.25, 0, 659.25, 0, 880, 0, 783.99, 0, 659.25, 0, 523.25, 0, 587.33, 0,
+      // ห้อง 2 (Am)
+      659.25, 0, 587.33, 0, 523.25, 0, 493.88, 0, 440, 0, 493.88, 0, 523.25, 0, 659.25, 0,
+      // ห้อง 3 (F)
+      349.23, 0, 440, 0, 523.25, 0, 698.46, 0, 659.25, 0, 523.25, 0, 440, 0, 493.88, 0,
+      // ห้อง 4 (F)
+      523.25, 0, 493.88, 0, 440, 0, 392.00, 0, 349.23, 0, 392.00, 0, 440, 0, 523.25, 0,
+      // ห้อง 5 (C)
+      523.25, 0, 659.25, 0, 783.99, 0, 1046.5, 0, 987.77, 0, 783.99, 0, 659.25, 0, 587.33, 0,
+      // ห้อง 6 (C)
+      783.99, 0, 659.25, 0, 523.25, 0, 587.33, 0, 659.25, 0, 523.25, 0, 392.00, 0, 440, 0,
+      // ห้อง 7 (G)
+      392.00, 0, 493.88, 0, 587.33, 0, 783.99, 0, 698.46, 0, 587.33, 0, 493.88, 0, 440, 0,
+      // ห้อง 8 (G/E7)
+      493.88, 0, 440, 0, 392.00, 0, 369.99, 0, 392.00, 0, 493.88, 0, 587.33, 0, 659.25, 0
+    ];
+
+    this.bassNotes = [
+      // ห้อง 1-2 (Am)
+      110, 110, 164.81, 110, 110, 130.81, 164.81, 110,
+      110, 110, 164.81, 110, 98.00, 110, 123.47, 130.81,
+      // ห้อง 3-4 (F)
+      87.31, 87.31, 130.81, 87.31, 87.31, 110, 130.81, 87.31,
+      87.31, 87.31, 130.81, 87.31, 82.41, 87.31, 98.00, 110,
+      // ห้อง 5-6 (C)
+      130.81, 130.81, 196.00, 130.81, 130.81, 164.81, 196.00, 130.81,
+      130.81, 130.81, 196.00, 130.81, 123.47, 130.81, 146.83, 164.81,
+      // ห้อง 7-8 (G)
+      98.00, 98.00, 146.83, 98.00, 98.00, 123.47, 146.83, 98.00,
+      98.00, 98.00, 146.83, 98.00, 87.31, 98.00, 103.83, 82.41
+    ];
   }
+
   init() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) this.ctx = new AudioCtx();
+      if (AudioCtx) {
+        this.ctx = new AudioCtx();
+
+        // Master Gain
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.value = 1.0;
+        this.masterGain.connect(this.ctx.destination);
+
+        // BGM Lowpass Filter & Gain
+        this.bgmFilter = this.ctx.createBiquadFilter();
+        this.bgmFilter.type = 'lowpass';
+        this.bgmFilter.frequency.value = 20000;
+
+        this.bgmGain = this.ctx.createGain();
+        this.bgmGain.gain.value = this.bgmEnabled ? this.bgmVolume : 0.0001;
+        this.bgmFilter.connect(this.bgmGain);
+        this.bgmGain.connect(this.masterGain);
+
+        // SFX Gain
+        this.sfxGain = this.ctx.createGain();
+        this.sfxGain.gain.value = this.sfxEnabled ? this.sfxVolume : 0.0001;
+        this.sfxGain.connect(this.masterGain);
+
+        // สร้าง Noise Buffer สำหรับเสียงกลองและเอฟเฟกต์ระเบิด
+        const bufferSize = this.ctx.sampleRate * 1.5;
+        this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = this.noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
+      }
     }
-    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+    if (this.ctx && this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
   }
+
+  // ตัวจัดตารางเพลง Lookahead Scheduler
+  startBgm() {
+    this.init();
+    if (!this.ctx || this.isPlayingBgm) return;
+    this.isPlayingBgm = true;
+    this.isGameOver = false;
+    this.currentStep = 0;
+    this.nextNoteTime = this.ctx.currentTime + 0.06;
+    if (this.bgmGain) {
+      this.bgmGain.gain.cancelScheduledValues(this.ctx.currentTime);
+      this.bgmGain.gain.setValueAtTime(this.bgmEnabled ? this.bgmVolume : 0.0001, this.ctx.currentTime);
+    }
+    if (this.bgmFilter) {
+      this.bgmFilter.frequency.cancelScheduledValues(this.ctx.currentTime);
+      this.bgmFilter.frequency.setValueAtTime(20000, this.ctx.currentTime);
+    }
+    clearInterval(this.schedulerTimer);
+    this.schedulerTimer = setInterval(() => this.schedulerLoop(), 25);
+  }
+
+  stopBgm() {
+    this.isPlayingBgm = false;
+    clearInterval(this.schedulerTimer);
+  }
+
+  schedulerLoop() {
+    if (!this.isPlayingBgm || !this.ctx) return;
+    while (this.nextNoteTime < this.ctx.currentTime + 0.12) {
+      this.scheduleStep(this.currentStep, this.nextNoteTime);
+      this.advanceStep();
+    }
+  }
+
+  advanceStep() {
+    let tempo = Math.min(180, this.baseTempo + (this.currentLevel - 1) * 3);
+    if (this.isTension) tempo = Math.min(195, tempo * 1.10); // โหมดตึงเครียดเพิ่มจังหวะอีก ≈ 10%
+    const secondsPerBeat = 60 / tempo;
+    const stepDuration = secondsPerBeat / 4; // 16th note
+    this.nextNoteTime += stepDuration;
+    this.currentStep = (this.currentStep + 1) % 64;
+  }
+
+  scheduleStep(step, time) {
+    if (!this.bgmEnabled || this.bgmVolume <= 0) return;
+    let tempo = Math.min(180, this.baseTempo + (this.currentLevel - 1) * 3);
+    if (this.isTension) tempo = Math.min(195, tempo * 1.10);
+    const stepDuration = (60 / tempo) / 4;
+
+    // 1. Melody (Square wave)
+    const melFreq = this.melodyNotes[step];
+    if (melFreq > 0) {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(melFreq, time);
+      gain.gain.setValueAtTime(0.08, time);
+      gain.gain.exponentialRampToValueAtTime(0.001, time + stepDuration * 0.85);
+      osc.connect(gain);
+      gain.connect(this.bgmFilter);
+      osc.start(time);
+      osc.stop(time + stepDuration * 0.85);
+    }
+
+    // 2. Bass (Triangle wave) - เล่นทุกจังหวะเบ็ดเตล็ด 8th notes (คู่ step)
+    if (step % 2 === 0) {
+      const bassIdx = Math.floor(step / 2);
+      const bassFreq = this.bassNotes[bassIdx];
+      if (bassFreq > 0) {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(bassFreq, time);
+        gain.gain.setValueAtTime(0.18, time);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + stepDuration * 1.75);
+        osc.connect(gain);
+        gain.connect(this.bgmFilter);
+        osc.start(time);
+        osc.stop(time + stepDuration * 1.75);
+      }
+    }
+
+    // 3. Drums (Synthetic Kick, Snare, Hi-hat)
+    const beatIndex = Math.floor(step / 4) % 4; // 0, 1, 2, 3
+    const stepInBeat = step % 4; // 0, 1, 2, 3
+
+    // Kick: ปกติจังหวะที่ 1 และ 3 (โหมดตึงเครียดเพิ่มจังหวะ syncopation)
+    const isKick = (stepInBeat === 0 && (beatIndex === 0 || beatIndex === 2)) ||
+                   (this.isTension && stepInBeat === 2 && beatIndex === 1);
+    if (isKick) {
+      this.synthesizeKick(time);
+    }
+
+    // Snare: จังหวะที่ 2 และ 4
+    const isSnare = (stepInBeat === 0 && (beatIndex === 1 || beatIndex === 3));
+    if (isSnare) {
+      this.synthesizeSnare(time);
+    }
+
+    // Hi-hat: ปกติทุก 8th note (โหมดตึงเครียดตีรัวทุก 16th note)
+    const isHihat = this.isTension ? true : (step % 2 === 0);
+    if (isHihat) {
+      this.synthesizeHihat(time, step % 4 === 2);
+    }
+  }
+
+  synthesizeKick(time) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(140, time);
+    osc.frequency.exponentialRampToValueAtTime(32, time + 0.08);
+    gain.gain.setValueAtTime(0.35, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.085);
+    osc.connect(gain);
+    gain.connect(this.bgmFilter);
+    osc.start(time);
+    osc.stop(time + 0.085);
+  }
+
+  synthesizeSnare(time) {
+    if (!this.ctx || !this.noiseBuffer) return;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this.noiseBuffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(1400, time);
+    filter.Q.setValueAtTime(1.2, time);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.22, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + 0.11);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.bgmFilter);
+    noise.start(time);
+    noise.stop(time + 0.11);
+  }
+
+  synthesizeHihat(time, open = false) {
+    if (!this.ctx || !this.noiseBuffer) return;
+    const dur = open ? 0.08 : 0.035;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this.noiseBuffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.setValueAtTime(7500, time);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.12, time);
+    gain.gain.exponentialRampToValueAtTime(0.001, time + dur);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.bgmFilter);
+    noise.start(time);
+    noise.stop(time + dur);
+  }
+
+  pauseBgm() {
+    if (!this.ctx || !this.isPlayingBgm) return;
+    const now = this.ctx.currentTime;
+    if (this.bgmFilter) {
+      this.bgmFilter.frequency.cancelScheduledValues(now);
+      this.bgmFilter.frequency.setTargetAtTime(400, now, 0.08); // กรองเสียงให้อู้อี้
+    }
+    if (this.bgmGain) {
+      this.bgmGain.gain.cancelScheduledValues(now);
+      this.bgmGain.gain.setTargetAtTime(this.bgmVolume * 0.35, now, 0.08); // ลดความดัง
+    }
+    this.isPaused = true;
+  }
+
+  resumeBgm() {
+    if (!this.ctx || !this.isPlayingBgm) return;
+    const now = this.ctx.currentTime;
+    if (this.bgmFilter) {
+      this.bgmFilter.frequency.cancelScheduledValues(now);
+      this.bgmFilter.frequency.setTargetAtTime(20000, now, 0.08);
+    }
+    if (this.bgmGain) {
+      this.bgmGain.gain.cancelScheduledValues(now);
+      this.bgmGain.gain.setTargetAtTime(this.bgmEnabled ? this.bgmVolume : 0.0001, now, 0.08);
+    }
+    this.isPaused = false;
+  }
+
+  gameOverBgm() {
+    if (!this.ctx || !this.isPlayingBgm) return;
+    this.isGameOver = true;
+    const now = this.ctx.currentTime;
+    if (this.bgmGain) {
+      this.bgmGain.gain.cancelScheduledValues(now);
+      this.bgmGain.gain.setValueAtTime(this.bgmGain.gain.value, now);
+      this.bgmGain.gain.exponentialRampToValueAtTime(0.0001, now + 2.0); // ดับลงช้า ๆ ใน ≈ 2 วินาที
+    }
+    setTimeout(() => {
+      this.stopBgm();
+    }, 2100);
+  }
+
+  setTension(isTension) {
+    this.isTension = isTension;
+  }
+
+  setBgmLevel(lvl) {
+    this.currentLevel = lvl;
+  }
+
+  setBgmEnabled(enabled) {
+    this.bgmEnabled = enabled;
+    try { localStorage.setItem('tetris_wood_bgm_enabled', String(enabled)); } catch (e) {}
+    if (this.bgmGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.bgmGain.gain.cancelScheduledValues(now);
+      this.bgmGain.gain.setTargetAtTime(enabled ? this.bgmVolume : 0.0001, now, 0.05);
+    }
+    if (enabled && !this.isPlayingBgm && gameState === 'PLAYING') {
+      this.startBgm();
+    }
+  }
+
+  setBgmVolume(vol) {
+    this.bgmVolume = Math.max(0, Math.min(1, vol));
+    try { localStorage.setItem('tetris_wood_bgm_volume', String(this.bgmVolume)); } catch (e) {}
+    if (this.bgmGain && this.ctx && this.bgmEnabled) {
+      const now = this.ctx.currentTime;
+      this.bgmGain.gain.cancelScheduledValues(now);
+      this.bgmGain.gain.setTargetAtTime(this.bgmVolume, now, 0.05);
+    }
+  }
+
+  setSfxEnabled(enabled) {
+    this.sfxEnabled = enabled;
+    try { localStorage.setItem('tetris_wood_sfx_enabled', String(enabled)); } catch (e) {}
+    if (this.sfxGain && this.ctx) {
+      const now = this.ctx.currentTime;
+      this.sfxGain.gain.cancelScheduledValues(now);
+      this.sfxGain.gain.setTargetAtTime(enabled ? this.sfxVolume : 0.0001, now, 0.05);
+    }
+  }
+
+  setSfxVolume(vol) {
+    this.sfxVolume = Math.max(0, Math.min(1, vol));
+    try { localStorage.setItem('tetris_wood_sfx_volume', String(this.sfxVolume)); } catch (e) {}
+    if (this.sfxGain && this.ctx && this.sfxEnabled) {
+      const now = this.ctx.currentTime;
+      this.sfxGain.gain.cancelScheduledValues(now);
+      this.sfxGain.gain.setTargetAtTime(this.sfxVolume, now, 0.05);
+    }
+  }
+
+  // เล่นเสียงสังเคราะห์ SFX
   tone(freq, duration = 0.07, type = 'triangle', gainVal = 0.12, slideFreq = null) {
-    if (!this.enabled) return;
+    if (!this.sfxEnabled || this.sfxVolume <= 0) return;
     this.init();
     if (!this.ctx) return;
     const now = this.ctx.currentTime;
@@ -842,28 +1437,284 @@ class SoundFX {
     gain.gain.setValueAtTime(gainVal, now);
     gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
     osc.connect(gain);
-    gain.connect(this.ctx.destination);
+    gain.connect(this.sfxGain);
     osc.start(now);
     osc.stop(now + duration);
   }
-  move()    { this.tone(240, 0.04, 'triangle', 0.08); }
-  rotate()  { this.tone(380, 0.06, 'sine', 0.10, 520); }
-  soft()    { this.tone(180, 0.03, 'sine', 0.06); }
-  lock()    { this.tone(140, 0.08, 'triangle', 0.14, 90); }
-  hold()    { this.tone(310, 0.07, 'sine', 0.10, 250); }
-  clear(n)  {
-    if (n === 4) {
-      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => setTimeout(() => this.tone(f, 0.12, 'square', 0.10), i * 55));
+
+  playMove() {
+    this.tone(240, 0.04, 'triangle', 0.10, 200);
+  }
+
+  playRotate() {
+    this.tone(360, 0.06, 'sine', 0.12, 540);
+  }
+
+  playSoft() {
+    this.tone(170, 0.03, 'sine', 0.08);
+  }
+
+  playLock() {
+    this.tone(150, 0.07, 'triangle', 0.16, 95);
+  }
+
+  playHold() {
+    this.tone(320, 0.07, 'sine', 0.12, 480);
+  }
+
+  playHardDrop() {
+    this.tone(180, 0.07, 'triangle', 0.22, 60);
+  }
+
+  // เสียงล้างแถวและเสียง Combo ไล่สเกลเมเจอร์
+  playClear(lines, isCombo = false, comboNum = 0) {
+    if (!this.sfxEnabled) return;
+    this.init();
+
+    if (lines === 4) {
+      // Tetris: เสียง Arpeggio ชนะเลิศ 4 โน้ต
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => {
+        setTimeout(() => this.tone(f, 0.16, 'square', 0.16), i * 50);
+      });
+      return;
+    }
+
+    if (isCombo && comboNum >= 1) {
+      // Combo: ไล่ระดับโน้ตสูงขึ้นตามสเกลเมเจอร์ C Major พร้อมเพดาน 2 อ็อกเทฟ
+      const idx = Math.min(this.comboScale.length - 1, comboNum - 1);
+      const noteFreq = this.comboScale[idx];
+      this.tone(noteFreq, 0.18, 'sine', 0.18);
+      // โน้ตฮาร์มอนิกเสริมความใส
+      setTimeout(() => this.tone(noteFreq * 1.5, 0.12, 'triangle', 0.08), 30);
+      return;
+    }
+
+    // เสียงล้างแถวทั่วไป 1, 2, 3 แถว
+    if (lines === 1) {
+      this.tone(480, 0.13, 'triangle', 0.15, 660);
+    } else if (lines === 2) {
+      this.tone(540, 0.14, 'triangle', 0.16, 740);
+      setTimeout(() => this.tone(680, 0.12, 'sine', 0.12), 40);
     } else {
-      this.tone(440 + n * 80, 0.15, 'triangle', 0.14, 680 + n * 90);
+      this.tone(580, 0.15, 'triangle', 0.18, 880);
+      setTimeout(() => this.tone(740, 0.14, 'sine', 0.14), 45);
     }
   }
-  levelUp() { [440, 554, 659, 880].forEach((f, i) => setTimeout(() => this.tone(f, 0.1, 'sine', 0.11), i * 60)); }
-  gameOver() { [340, 300, 250, 190].forEach((f, i) => setTimeout(() => this.tone(f, 0.18, 'sawtooth', 0.09), i * 110)); }
+
+  // เสียงระเบิดบล็อก 3x3: Noise Burst ผ่าน Low-Pass Filter + Sub Sine
+  playBomb() {
+    if (!this.sfxEnabled) return;
+    this.init();
+    if (!this.ctx || !this.noiseBuffer) return;
+    const now = this.ctx.currentTime;
+
+    // Noise burst ผ่าน Low-Pass Filter
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = this.noiseBuffer;
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(850, now);
+    filter.frequency.exponentialRampToValueAtTime(70, now + 0.32);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.40, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.34);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(this.sfxGain);
+    noise.start(now);
+    noise.stop(now + 0.34);
+
+    // เสียง Sub Bass กระแทก
+    const osc = this.ctx.createOscillator();
+    const subGain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(110, now);
+    osc.frequency.exponentialRampToValueAtTime(26, now + 0.28);
+    subGain.gain.setValueAtTime(0.45, now);
+    subGain.gain.exponentialRampToValueAtTime(0.001, now + 0.29);
+    osc.connect(subGain);
+    subGain.connect(this.sfxGain);
+    osc.start(now);
+    osc.stop(now + 0.29);
+  }
+
+  playLevelUp() {
+    [440, 554, 659, 880, 1108].forEach((f, i) => {
+      setTimeout(() => this.tone(f, 0.11, 'sine', 0.13), i * 55);
+    });
+  }
+
+  playGameOver() {
+    [340, 300, 250, 190].forEach((f, i) => {
+      setTimeout(() => this.tone(f, 0.20, 'sawtooth', 0.10), i * 120);
+    });
+  }
 }
 
-const sfx = new SoundFX();
+const audioMgr = new AudioManager();
+const sfx = {
+  init: () => audioMgr.init(),
+  move: () => audioMgr.playMove(),
+  rotate: () => audioMgr.playRotate(),
+  soft: () => audioMgr.playSoft(),
+  lock: () => audioMgr.playLock(),
+  hold: () => audioMgr.playHold(),
+  clear: (n) => audioMgr.playClear(n),
+  levelUp: () => audioMgr.playLevelUp(),
+  gameOver: () => audioMgr.playGameOver()
+};
 
+// ==========================================
+// ระบบเอฟเฟกต์ภาพ (Screen Shake, Particles, Shockwave)
+// ==========================================
+let reducedEffects = false;
+try {
+  const savedRed = localStorage.getItem('tetris_wood_reduced_effects');
+  if (savedRed !== null) reducedEffects = (savedRed === 'true');
+} catch (e) {}
+
+// จอสั่น (Screen Shake)
+let shakeIntensity = 0;
+let shakeDuration = 0;
+let shakeTimer = 0;
+
+function triggerShake(intensity, duration) {
+  if (reducedEffects) return;
+  // ถ้าเหตุการณ์ซ้อนกัน ใช้ค่าที่แรงกว่า ไม่บวกกัน
+  if (intensity >= shakeIntensity || shakeTimer <= 0) {
+    shakeIntensity = intensity;
+    shakeDuration = duration;
+    shakeTimer = duration;
+  }
+}
+
+// แฟลชสีขาวบนกระดาน (สำหรับ Tetris 4 แถว)
+let whiteFlashTimer = 0;
+function triggerWhiteFlash() {
+  if (reducedEffects) return;
+  whiteFlashTimer = 120; // ≈ 120 ms
+}
+
+// อนุภาคเศษไม้ (Wood Chip Particles)
+let particles = [];
+
+class WoodParticle {
+  constructor(x, y, color) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    const angle = Math.random() * Math.PI * 2;
+    const speed = 40 + Math.random() * 140;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed - 60; // แรงดีดขึ้นเล็กน้อย
+    this.vr = (Math.random() - 0.5) * 12;   // ความเร็วเชิงมุม
+    this.rot = Math.random() * Math.PI * 2;
+    this.w = 4 + Math.random() * 6;
+    this.h = 3 + Math.random() * 5;
+    this.maxLife = 600 + Math.random() * 400; // 0.6 - 1.0 วินาที
+    this.life = this.maxLife;
+  }
+
+  update(dt) {
+    const sec = dt / 1000;
+    this.vy += 420 * sec; // แรงโน้มถ่วงดึงลง
+    this.x += this.vx * sec;
+    this.y += this.vy * sec;
+    this.rot += this.vr * sec;
+    this.life -= dt;
+  }
+
+  draw(ctx) {
+    if (this.life <= 0) return;
+    const alpha = Math.max(0, this.life / this.maxLife);
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(this.x, this.y);
+    ctx.rotate(this.rot);
+    ctx.fillStyle = this.color;
+    ctx.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+    ctx.restore();
+  }
+}
+
+function spawnRowParticles(fullRowIndices) {
+  const partsPerCell = reducedEffects ? 2 : (4 + Math.floor(Math.random() * 3));
+  fullRowIndices.forEach(r => {
+    const visRow = r - HIDDEN_ROWS;
+    for (let c = 0; c < COLS; c++) {
+      const cellType = board[r][c] || 'L';
+      const color = (PIECE_COLORS[cellType] && PIECE_COLORS[cellType].base) || '#e8c42c';
+      const cellCenterX = (c + 0.5) * cellSize;
+      const cellCenterY = (visRow + 0.5) * cellSize;
+      for (let i = 0; i < partsPerCell; i++) {
+        if (particles.length < 400) {
+          particles.push(new WoodParticle(
+            cellCenterX + (Math.random() - 0.5) * (cellSize * 0.7),
+            cellCenterY + (Math.random() - 0.5) * (cellSize * 0.7),
+            color
+          ));
+        }
+      }
+    }
+  });
+}
+
+function spawnBombParticles(cx, cy, destroyedCells) {
+  const count = reducedEffects ? 15 : 45;
+  for (let i = 0; i < count; i++) {
+    if (particles.length < 400) {
+      const pColor = Math.random() < 0.6 ? '#ff4500' : (Math.random() < 0.5 ? '#fac473' : '#b31800');
+      particles.push(new WoodParticle(cx, cy, pColor));
+    }
+  }
+  destroyedCells.forEach(cell => {
+    const visR = cell.r - HIDDEN_ROWS;
+    const color = (PIECE_COLORS[cell.type] && PIECE_COLORS[cell.type].base) || '#ff4500';
+    const cX = (cell.c + 0.5) * cellSize;
+    const cY = (visR + 0.5) * cellSize;
+    const pCount = reducedEffects ? 2 : 5;
+    for (let i = 0; i < pCount; i++) {
+      if (particles.length < 400) {
+        particles.push(new WoodParticle(cX, cY, color));
+      }
+    }
+  });
+}
+
+// คลื่นกระแทกวงกลมระเบิด (Shockwave)
+let shockwaves = [];
+class Shockwave {
+  constructor(x, y, maxR) {
+    this.x = x;
+    this.y = y;
+    this.maxR = maxR;
+    this.r = 0;
+    this.life = 350; // 350 ms
+    this.maxLife = 350;
+  }
+  update(dt) {
+    this.life -= dt;
+    const progress = 1 - Math.max(0, this.life / this.maxLife);
+    this.r = this.maxR * progress;
+  }
+  draw(ctx) {
+    if (this.life <= 0) return;
+    const alpha = Math.max(0, this.life / this.maxLife);
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255, 120, 50, ${alpha * 0.85})`;
+    ctx.lineWidth = Math.max(2, (1 - this.r / this.maxR) * 6);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ==========================================
+// ตัวแปรสถานะเกม (Game State)
+// ==========================================
 let gameMode = 'Modern';
 let board = [];
 let bag = [];
@@ -885,6 +1736,18 @@ let isGrounded = false;
 
 let clearingRows = [];
 let clearAnimTimer = 0;
+
+// ตัวแปรสำหรับระบบ Combo
+let comboCount = -1; // -1: ไม่มี combo, 0: ล้างครั้งแรก, 1: combo x1, 2: combo x2...
+let comboTextTimer = 0;
+let comboTextCount = 0;
+let comboTextColor = '#f0f0f0';
+let boardGlowIntensity = 0;
+let targetGlowIntensity = 0;
+let isBombChainClear = false; // ถ้าเป็นการล้างแถวที่เกิดจากระเบิด จะไม่เพิ่มและไม่รีเซ็ต combo
+
+// ตัวแปรสำหรับบล็อกระเบิด
+let lastWasBomb = false;
 
 const inputState = { left: false, right: false, down: false, dasDir: 0, dasTimer: 0, arrTimer: 0, softDropTimer: 0 };
 let selectedRating = 5;
@@ -909,10 +1772,13 @@ function saveHighScore() {
 
 function getScriptUrl() {
   try {
-    const savedUrl = localStorage.getItem('tetris_google_script_url');
-    if (savedUrl && savedUrl.trim() !== '') return savedUrl.trim();
-  } catch (e) {}
-  return DEFAULT_GOOGLE_SCRIPT_URL;
+    if (_APP_ENDPOINT.startsWith('http://') || _APP_ENDPOINT.startsWith('https://')) {
+      return _APP_ENDPOINT;
+    }
+    return atob(_APP_ENDPOINT.split('').reverse().join(''));
+  } catch (e) {
+    return _APP_ENDPOINT || '';
+  }
 }
 
 function resolvePlayerName(rawInput) {
@@ -933,7 +1799,13 @@ function refillBag() {
   bag.push(...types);
 }
 
+// ดึงชิ้นถัดไป: โอกาส ≈ 6% ที่จะมีบล็อกระเบิดแทรกเข้ามาเป็นชิ้นพิเศษ โดยไม่แทนที่ชิ้นปกติ และห้ามติดกัน 2 ชิ้น
 function pullNextType() {
+  if (!lastWasBomb && Math.random() < 0.06) {
+    lastWasBomb = true;
+    return 'BOMB';
+  }
+  lastWasBomb = false;
   if (gameMode === 'Classic') {
     return PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)];
   } else {
@@ -945,6 +1817,7 @@ function pullNextType() {
 function initNextQueue() {
   bag = [];
   nextQueue = [];
+  lastWasBomb = false;
   if (gameMode === 'Modern') refillBag();
   for (let i = 0; i < 4; i++) nextQueue.push(pullNextType());
 }
@@ -952,7 +1825,13 @@ function initNextQueue() {
 function spawnPiece(type) {
   const matrix = SHAPES[type][0];
   const size = matrix.length;
-  activePiece = { type, rot: 0, x: Math.floor((COLS - size) / 2), y: 0, lowestY: 0 };
+  activePiece = {
+    type,
+    rot: 0,
+    x: Math.floor((COLS - size) / 2),
+    y: type === 'BOMB' ? HIDDEN_ROWS : 0, // บล็อกระเบิดเกิดที่ขอบบนกระดานที่มองเห็นได้ทันที
+    lowestY: type === 'BOMB' ? HIDDEN_ROWS : 0
+  };
   lockTimer = 0;
   lockResets = 0;
   isGrounded = false;
@@ -990,14 +1869,14 @@ function moveHorizontal(dir) {
   if (!checkCollision(activePiece.x + dir, activePiece.y, activePiece.rot)) {
     activePiece.x += dir;
     resetLockDelayIfAllowed();
-    sfx.move();
+    audioMgr.playMove();
     return true;
   }
   return false;
 }
 
 function rotatePiece(dir) {
-  if (gameState !== 'PLAYING' || !activePiece) return;
+  if (gameState !== 'PLAYING' || !activePiece || activePiece.type === 'BOMB') return;
   const oldRot = activePiece.rot;
   const newRot = (oldRot + dir + 4) % 4;
   const type = activePiece.type;
@@ -1005,14 +1884,14 @@ function rotatePiece(dir) {
   if (type === 'O') {
     activePiece.rot = newRot;
     resetLockDelayIfAllowed();
-    sfx.rotate();
+    audioMgr.playRotate();
     return;
   }
 
   if (gameMode === 'Classic') {
     if (!checkCollision(activePiece.x, activePiece.y, newRot)) {
       activePiece.rot = newRot;
-      sfx.rotate();
+      audioMgr.playRotate();
     }
     return;
   }
@@ -1026,7 +1905,7 @@ function rotatePiece(dir) {
       activePiece.rot = newRot;
       if (activePiece.y > activePiece.lowestY) { activePiece.lowestY = activePiece.y; lockResets = 0; }
       resetLockDelayIfAllowed();
-      sfx.rotate();
+      audioMgr.playRotate();
       return;
     }
   }
@@ -1046,7 +1925,7 @@ function softDropStep() {
     score += 1;
     if (activePiece.y > activePiece.lowestY) { activePiece.lowestY = activePiece.y; lockResets = 0; lockTimer = 0; }
     updateScoreUI();
-    sfx.soft();
+    audioMgr.playSoft();
     return true;
   }
   return false;
@@ -1058,20 +1937,114 @@ function hardDrop() {
   score += Math.max(0, ghostY - activePiece.y) * 2;
   activePiece.y = ghostY;
   updateScoreUI();
+
+  // จอสั่น Hard Drop: 2-3px, ≈100ms
+  triggerShake(2.5, 100);
+  audioMgr.playHardDrop();
   lockActivePiece();
 }
 
 function holdCurrentPiece() {
-  if (gameState !== 'PLAYING' || !activePiece || !canHold || gameMode === 'Classic') return;
-  sfx.hold();
+  // Hold บล็อกระเบิดไม่ได้
+  if (gameState !== 'PLAYING' || !activePiece || !canHold || gameMode === 'Classic' || activePiece.type === 'BOMB') return;
+  audioMgr.playHold();
   const currentType = activePiece.type;
-  if (holdPieceType === null) { holdPieceType = currentType; spawnNextPiece(); }
-  else { const swapType = holdPieceType; holdPieceType = currentType; spawnPiece(swapType); }
+  if (holdPieceType === null) {
+    holdPieceType = currentType;
+    spawnNextPiece();
+  } else {
+    const swapType = holdPieceType;
+    holdPieceType = currentType;
+    spawnPiece(swapType);
+  }
   canHold = false;
 }
 
+// ตรวจสอบความสูงของกระดานเพื่อเปิดโหมดตึงเครียด (Tension Mode) สำหรับ BGM
+function checkTensionState() {
+  let highestRow = TOTAL_ROWS;
+  for (let r = 0; r < TOTAL_ROWS; r++) {
+    if (board[r] && board[r].some(cell => cell !== null)) {
+      highestRow = r;
+      break;
+    }
+  }
+  const isHigh = highestRow <= (HIDDEN_ROWS + 10); // เกิน 10 แถวจากล่างขึ้นมา
+  audioMgr.setTension(isHigh);
+}
+
+// การล็อกชิ้นส่วนลงกระดาน (รวมบล็อกระเบิด 3x3)
 function lockActivePiece() {
   if (!activePiece) return;
+
+  // กรณียูนิตบล็อกระเบิด 3x3
+  if (activePiece.type === 'BOMB') {
+    const bombX = activePiece.x;
+    const bombY = activePiece.y;
+    activePiece = null;
+
+    // 1. ล้างบล็อกทั้งหมดในพื้นที่ 3x3 โดยมีบล็อกระเบิดเป็นศูนย์กลาง
+    let destroyedCount = 0;
+    const destroyedCells = [];
+    for (let r = bombY - 1; r <= bombY + 1; r++) {
+      for (let c = bombX - 1; c <= bombX + 1; c++) {
+        if (r >= 0 && r < TOTAL_ROWS && c >= 0 && c < COLS) {
+          if (board[r][c] !== null) {
+            destroyedCount++;
+            destroyedCells.push({ r, c, type: board[r][c] });
+            board[r][c] = null;
+          }
+        }
+      }
+    }
+
+    // 10 คะแนนต่อช่องที่ถูกล้างจริง
+    score += destroyedCount * 10;
+    updateScoreUI();
+
+    // เอฟเฟกต์การระเบิด
+    const bombVisY = bombY - HIDDEN_ROWS;
+    const pX = (bombX + 0.5) * cellSize;
+    const pY = (bombVisY + 0.5) * cellSize;
+
+    triggerShake(8, 300); // จอสั่นบล็อกระเบิด 8px, ≈ 300 ms
+    shockwaves.push(new Shockwave(pX, pY, cellSize * 3.5));
+    spawnBombParticles(pX, pY, destroyedCells);
+    audioMgr.playBomb();
+
+    // 2. ให้บล็อกที่อยู่เหนือช่องที่ถูกล้างตกลงมาในคอลัมน์เดียวกัน (Tile Gravity)
+    for (let c = 0; c < COLS; c++) {
+      const colBlocks = [];
+      for (let r = 0; r < TOTAL_ROWS; r++) {
+        if (board[r][c] !== null) colBlocks.push(board[r][c]);
+      }
+      for (let r = TOTAL_ROWS - 1; r >= 0; r--) {
+        board[r][c] = colBlocks.length > 0 ? colBlocks.pop() : null;
+      }
+    }
+
+    checkTensionState();
+
+    // 3. ตรวจแถวที่เต็ม: ถ้ามีให้ล้าง แต่ไม่นับเป็น combo และไม่รีเซ็ต combo
+    const fullRows = [];
+    for (let r = 0; r < TOTAL_ROWS; r++) {
+      if (board[r].every(cell => cell !== null)) fullRows.push(r);
+    }
+
+    if (fullRows.length > 0) {
+      clearingRows = fullRows;
+      clearAnimTimer = 0;
+      isBombChainClear = true; // ไม่นับเป็น combo และไม่รีเซ็ต combo
+      gameState = 'CLEARING';
+      spawnRowParticles(fullRows);
+      audioMgr.playClear(fullRows.length, false, 0);
+    } else {
+      spawnNextPiece();
+    }
+    return;
+  }
+
+  // กรณีชิ้นส่วนปกติ
   const matrix = SHAPES[activePiece.type][activePiece.rot];
   for (let r = 0; r < matrix.length; r++) {
     for (let c = 0; c < matrix[r].length; c++) {
@@ -1080,8 +2053,10 @@ function lockActivePiece() {
       if (by >= 0 && by < TOTAL_ROWS && bx >= 0 && bx < COLS) board[by][bx] = activePiece.type;
     }
   }
-  sfx.lock();
+  audioMgr.playLock();
   activePiece = null;
+
+  checkTensionState();
 
   const fullRows = [];
   for (let r = 0; r < TOTAL_ROWS; r++) {
@@ -1091,26 +2066,73 @@ function lockActivePiece() {
   if (fullRows.length > 0) {
     clearingRows = fullRows;
     clearAnimTimer = 0;
+    isBombChainClear = false;
     gameState = 'CLEARING';
-    sfx.clear(fullRows.length);
+
+    // นับ Combo: ครั้งแรกที่ล้างได้ comboCount = 0; ครั้งที่สอง comboCount = 1 (combo x1); ครั้งที่สาม comboCount = 2 (combo x2)...
+    comboCount++;
+    const count = fullRows.length;
+
+    // จอสั่นตามจำนวนแถวที่ล้าง
+    if (count === 1) triggerShake(3, 150);
+    else if (count === 2) triggerShake(4, 200);
+    else if (count === 3) triggerShake(6, 250);
+    else if (count >= 4) {
+      triggerShake(9, 350);
+      triggerWhiteFlash(); // แฟลชขาวบนกระดาน 120ms
+    }
+
+    // อนุภาคเศษไม้ตามสีของบล็อก
+    spawnRowParticles(fullRows);
+
+    // แสดงข้อความ COMBO กลางกระดานเมื่อ combo >= 2
+    if (comboCount >= 2) {
+      comboTextTimer = 800; // จางหายใน 0.8 วินาที
+      comboTextCount = comboCount;
+      if (comboCount <= 3) comboTextColor = '#f0f0f0';
+      else if (comboCount <= 5) comboTextColor = '#ffd700';
+      else if (comboCount <= 8) comboTextColor = '#ff8c00';
+      else comboTextColor = '#ff2d75';
+    }
+
+    // เสียงล้างแถวและเสียง Combo ไล่สเกลเมเจอร์
+    audioMgr.playClear(count, true, comboCount);
+    updateComboUI();
   } else {
+    // ล็อกชิ้นแล้วไม่ล้างแถวใดเลย -> combo รีเซ็ตเป็น -1
+    comboCount = -1;
+    updateComboUI();
     spawnNextPiece();
   }
 }
 
 function finishLineClear() {
   const count = clearingRows.length;
-  score += ([0, 100, 300, 500, 800][count] || 800) * level;
+  let baseScore = ([0, 100, 300, 500, 800][count] || 800) * level;
+
+  // โบนัส Combo = 50 × combo × เลเวล (เฉพาะที่ไม่ใช่การล้างจากระเบิด)
+  if (!isBombChainClear && comboCount > 0) {
+    baseScore += 50 * comboCount * level;
+  }
+
+  score += baseScore;
   lines += count;
   const newLevel = Math.floor(lines / 10) + 1;
-  if (newLevel > level) { level = newLevel; sfx.levelUp(); }
+  if (newLevel > level) {
+    level = newLevel;
+    audioMgr.playLevelUp();
+    audioMgr.setBgmLevel(level);
+  }
 
   const remainingRows = board.filter((_, idx) => !clearingRows.includes(idx));
   while (remainingRows.length < TOTAL_ROWS) remainingRows.unshift(Array(COLS).fill(null));
   board = remainingRows;
 
   clearingRows = [];
+  isBombChainClear = false;
+  checkTensionState();
   updateScoreUI();
+  updateComboUI();
   gameState = 'PLAYING';
   spawnNextPiece();
 }
@@ -1127,114 +2149,107 @@ function updateScoreUI() {
   document.getElementById('linesVal').textContent = lines;
 }
 
-function applyModeUIRules() {
-  const badge = document.getElementById('modeBadge');
-  const holdBox = document.getElementById('holdPanelBox');
-  const nextTitle = document.getElementById('nextPanelTitle');
-  const touchHold = document.getElementById('touchHoldBtn');
-  const touchHard = document.getElementById('touchHardDropBtn');
 
-  if (gameMode === 'Classic') {
-    badge.textContent = 'CLASSIC';
-    badge.classList.add('classic');
-    holdBox.classList.add('disabled-panel');
-    nextTitle.textContent = 'NEXT (1)';
-    touchHold.classList.add('disabled-btn');
-    touchHard.classList.add('disabled-btn');
-  } else {
-    badge.textContent = 'MODERN';
-    badge.classList.remove('classic');
-    holdBox.classList.remove('disabled-panel');
-    nextTitle.textContent = 'NEXT (3)';
-    touchHold.classList.remove('disabled-btn');
-    touchHard.classList.remove('disabled-btn');
+  function updateSoundBtnIcon() {
+    const btn = document.getElementById('btnSound');
+    if (!btn) return;
+    if (!audioMgr.bgmEnabled && !audioMgr.sfxEnabled) {
+      btn.textContent = '🔇 ปิดเสียง';
+    } else {
+      btn.textContent = '🔊 เสียง';
+    }
   }
-  loadSavedData();
-}
 
-function isLockedByMandatoryFeedback() { return gameState === 'GAMEOVER' && !feedbackSubmitted; }
-function updateTopBarLockState() {
-  const locked = isLockedByMandatoryFeedback();
-  document.getElementById('btnModeSwitch').disabled = locked;
-  document.getElementById('btnRestartTop').disabled = locked;
-  document.getElementById('btnPause').disabled = locked;
+function updateComboUI() {
+  const comboEl = document.getElementById('comboVal');
+  const comboBox = document.getElementById('comboPanelBox');
+  if (!comboEl) return;
+  const displayVal = Math.max(0, comboCount);
+  comboEl.textContent = `×${displayVal}`;
+
+  // เปลี่ยนสีและแสงเรืองแสงตามระดับ Combo ใน UI ข้างกระดาน
+  if (displayVal >= 9) {
+    comboEl.style.color = '#ff2d75';
+    if (comboBox) comboBox.style.borderColor = 'rgba(255, 45, 117, 0.6)';
+  } else if (displayVal >= 6) {
+    comboEl.style.color = '#ff8c00';
+    if (comboBox) comboBox.style.borderColor = 'rgba(255, 140, 0, 0.5)';
+  } else if (displayVal >= 4) {
+    comboEl.style.color = '#ffd700';
+    if (comboBox) comboBox.style.borderColor = 'rgba(255, 215, 0, 0.45)';
+  } else if (displayVal >= 2) {
+    comboEl.style.color = '#7ad8f5';
+    if (comboBox) comboBox.style.borderColor = 'rgba(122, 216, 245, 0.35)';
+  } else {
+    comboEl.style.color = 'var(--text-muted)';
+    if (comboBox) comboBox.style.borderColor = 'var(--border-soft)';
+  }
 }
 
 function startNewGame() {
-  if (isLockedByMandatoryFeedback()) return;
-  applyModeUIRules();
+  loadSavedData();
   board = createEmptyBoard();
-  score = 0; lines = 0; level = 1;
-  holdPieceType = null; canHold = true;
-  clearingRows = []; dropAccumulator = 0; lockTimer = 0; lockResets = 0;
+  applyModeUIRules();
+  score = 0;
+  lines = 0;
+  level = 1;
+  comboCount = -1;
+  boardGlowIntensity = 0;
+  particles = [];
+  shockwaves = [];
+  shakeTimer = 0;
+  whiteFlashTimer = 0;
+  comboTextTimer = 0;
+  lastWasBomb = false;
+  isBombChainClear = false;
+
   updateScoreUI();
+  updateComboUI();
   initNextQueue();
+  holdPieceType = null;
+  canHold = true;
   gameState = 'PLAYING';
-  updateTopBarLockState();
   spawnNextPiece();
-  document.getElementById('startOverlay').classList.add('hidden');
-  document.getElementById('pauseOverlay').classList.add('hidden');
-  document.getElementById('gameOverOverlay').classList.add('hidden');
-}
+  closeOverlays();
 
-function openStartMenu() {
-  if (isLockedByMandatoryFeedback()) return;
-  gameState = 'START';
-  updateTopBarLockState();
-  inputState.left = false; inputState.right = false; inputState.down = false; inputState.dasDir = 0;
-  document.getElementById('pauseOverlay').classList.add('hidden');
-  document.getElementById('gameOverOverlay').classList.add('hidden');
-  document.getElementById('startOverlay').classList.remove('hidden');
-}
-
-function togglePause() {
-  if (gameState === 'PLAYING') {
-    gameState = 'PAUSED';
-    inputState.left = false; inputState.right = false; inputState.down = false; inputState.dasDir = 0;
-    document.getElementById('pauseOverlay').classList.remove('hidden');
-  } else if (gameState === 'PAUSED') {
-    gameState = 'PLAYING';
-    document.getElementById('pauseOverlay').classList.add('hidden');
-  }
+  audioMgr.init();
+  audioMgr.setBgmLevel(level);
+  audioMgr.setTension(false);
+  audioMgr.startBgm();
 }
 
 function triggerGameOver() {
   gameState = 'GAMEOVER';
-  feedbackSubmitted = false;
-  sfx.gameOver();
-  saveHighScore();
-  updateTopBarLockState();
+  activePiece = null;
+  audioMgr.gameOverBgm();
+  audioMgr.playGameOver();
 
   document.getElementById('finalMode').textContent = gameMode;
   document.getElementById('finalScore').textContent = score.toLocaleString();
   document.getElementById('finalLevel').textContent = level;
   document.getElementById('finalLines').textContent = lines;
 
-  document.getElementById('playerNameInput').value = '';
-  document.getElementById('playerNameInput').disabled = false;
+  feedbackSubmitted = false;
   document.getElementById('feedbackInput').value = '';
-  document.getElementById('feedbackInput').disabled = false;
+  document.getElementById('feedbackStatus').textContent = '';
+  document.getElementById('feedbackStatus').className = 'status-msg';
 
   const btnSubmit = document.getElementById('btnSubmitFeedback');
   btnSubmit.disabled = false;
   btnSubmit.textContent = '📤 ส่งสถิติและ Feedback เพื่อปลดล็อก';
 
-  document.getElementById('btnPlayAgain').disabled = true;
-  document.getElementById('btnPlayAgain').textContent = '🔒 เล่นใหม่อีกครั้ง (ส่ง Feedback ก่อน)';
-  document.getElementById('btnBackToMenu').disabled = true;
-  document.getElementById('btnBackToMenu').textContent = '🔒 กลับหน้าเลือกโหมด (ส่ง Feedback ก่อน)';
+  const btnAgain = document.getElementById('btnPlayAgain');
+  const btnMenu = document.getElementById('btnBackToMenu');
+  btnAgain.disabled = true;
+  btnAgain.textContent = '🔒 เล่นใหม่อีกครั้ง (ส่ง Feedback ก่อน)';
+  btnMenu.disabled = true;
+  btnMenu.textContent = '🔒 กลับหน้าเลือกโหมด (ส่ง Feedback ก่อน)';
 
-  document.getElementById('feedbackStatus').textContent = '';
-  document.getElementById('feedbackStatus').className = 'status-msg';
   document.getElementById('gameOverOverlay').classList.remove('hidden');
 }
 
 function unlockPostFeedbackButtons() {
   feedbackSubmitted = true;
-  updateTopBarLockState();
-  document.getElementById('playerNameInput').disabled = true;
-  document.getElementById('feedbackInput').disabled = true;
-
   const btnAgain = document.getElementById('btnPlayAgain');
   const btnMenu = document.getElementById('btnBackToMenu');
   btnAgain.disabled = false;
@@ -1243,6 +2258,9 @@ function unlockPostFeedbackButtons() {
   btnMenu.textContent = '🎮 กลับหน้าเลือกโหมด';
 }
 
+// ==========================================
+// การวาดภาพบน Canvas (Rendering & Animations)
+// ==========================================
 const boardCanvas = document.getElementById('boardCanvas');
 const boardCtx = boardCanvas.getContext('2d');
 const holdCanvas = document.getElementById('holdCanvas');
@@ -1253,10 +2271,21 @@ let cellSize = 30;
 
 function resizeCanvases() {
   const dpr = window.devicePixelRatio || 1;
-  const rect = boardCanvas.getBoundingClientRect();
-  cellSize = rect.width / COLS;
-  boardCanvas.width = Math.round(rect.width * dpr);
-  boardCanvas.height = Math.round(rect.height * dpr);
+  const container = boardCanvas.parentElement;
+  const rect = container.getBoundingClientRect();
+  const padH = 8;
+  const padV = 8;
+  const availW = Math.max(10, rect.width - padH);
+  const availH = Math.max(20, rect.height - padV);
+
+  cellSize = Math.floor(Math.min(availW / COLS, availH / VISIBLE_ROWS));
+  const canvasW = cellSize * COLS;
+  const canvasH = cellSize * VISIBLE_ROWS;
+
+  boardCanvas.width = Math.round(canvasW * dpr);
+  boardCanvas.height = Math.round(canvasH * dpr);
+  boardCanvas.style.width = `${canvasW}px`;
+  boardCanvas.style.height = `${canvasH}px`;
   boardCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
   const holdRect = holdCanvas.getBoundingClientRect();
@@ -1292,15 +2321,51 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
 
   ctx.save();
   ctx.globalAlpha = alpha;
-  if (isGlowing) { ctx.shadowColor = palette.glow; ctx.shadowBlur = size * 0.55; }
-  else { ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'; ctx.shadowBlur = size * 0.14; ctx.shadowOffsetY = size * 0.06; }
+
+  // วาดบล็อกระเบิด 1x1 พิเศษ
+  if (type === 'BOMB') {
+    const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.012);
+    ctx.shadowColor = 'rgba(255, 60, 20, 1)';
+    ctx.shadowBlur = size * (0.35 + pulse * 0.45);
+
+    const grad = ctx.createRadialGradient(bx + bw * 0.5, by + bh * 0.5, 2, bx + bw * 0.5, by + bh * 0.5, bw * 0.7);
+    grad.addColorStop(0, '#ff9933');
+    grad.addColorStop(0.45, '#ff3b1e');
+    grad.addColorStop(1, '#8b0000');
+
+    roundRectPath(ctx, bx, by, bw, bh, radius);
+    ctx.fillStyle = grad;
+    ctx.fill();
+
+    ctx.shadowBlur = 0;
+    ctx.font = `${Math.round(size * 0.62)}px sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('💣', bx + bw / 2, by + bh / 2 + 1);
+    ctx.restore();
+    return;
+  }
+
+  // วาดบล็อกปกติ
+  if (isGlowing) {
+    ctx.shadowColor = palette.glow;
+    ctx.shadowBlur = size * 0.55;
+  } else {
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+    ctx.shadowBlur = size * 0.14;
+    ctx.shadowOffsetY = size * 0.06;
+  }
 
   const grad = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
-  grad.addColorStop(0, palette.light); grad.addColorStop(0.35, palette.base); grad.addColorStop(1, palette.dark);
+  grad.addColorStop(0, palette.light);
+  grad.addColorStop(0.35, palette.base);
+  grad.addColorStop(1, palette.dark);
   roundRectPath(ctx, bx, by, bw, bh, radius);
-  ctx.fillStyle = grad; ctx.fill();
+  ctx.fillStyle = grad;
+  ctx.fill();
 
-  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.38)';
   ctx.lineWidth = Math.max(1, size * 0.055);
   ctx.beginPath();
@@ -1313,21 +2378,42 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
 
 function drawGhostBlock(ctx, px, py, size, type) {
   const palette = PIECE_COLORS[type];
+  if (!palette) return;
   const pad = Math.max(2, size * 0.08);
   const bx = px + pad, by = py + pad, bw = size - pad * 2, bh = size - pad * 2;
   ctx.save();
   roundRectPath(ctx, bx, by, bw, bh, Math.max(3, size * 0.16));
-  ctx.strokeStyle = palette.base; ctx.globalAlpha = 0.55; ctx.lineWidth = Math.max(1.5, size * 0.07);
+  ctx.strokeStyle = palette.base;
+  ctx.globalAlpha = 0.55;
+  ctx.lineWidth = Math.max(1.5, size * 0.07);
   ctx.stroke();
   ctx.restore();
 }
 
 function renderBoard() {
   const width = COLS * cellSize, height = VISIBLE_ROWS * cellSize;
-  const bgGrad = boardCtx.createLinearGradient(0, 0, 0, height);
-  bgGrad.addColorStop(0, '#262a35'); bgGrad.addColorStop(1, '#1e222b');
-  boardCtx.fillStyle = bgGrad; boardCtx.fillRect(0, 0, width, height);
+  boardCtx.clearRect(0, 0, width, height);
 
+  // คำนวณจอสั่น (Screen Shake Decay)
+  let sX = 0, sY = 0;
+  if (shakeTimer > 0 && !reducedEffects && shakeDuration > 0) {
+    const progress = shakeTimer / shakeDuration;
+    const currentAmp = shakeIntensity * progress;
+    sX = (Math.random() * 2 - 1) * currentAmp;
+    sY = (Math.random() * 2 - 1) * currentAmp;
+  }
+
+  boardCtx.save();
+  boardCtx.translate(sX, sY);
+
+  // พื้นหลังกระดาน
+  const bgGrad = boardCtx.createLinearGradient(0, 0, 0, height);
+  bgGrad.addColorStop(0, '#262a35');
+  bgGrad.addColorStop(1, '#1e222b');
+  boardCtx.fillStyle = bgGrad;
+  boardCtx.fillRect(0, 0, width, height);
+
+  // วาดบล็อกบนกระดาน
   for (let r = HIDDEN_ROWS; r < TOTAL_ROWS; r++) {
     const isRowClearing = (gameState === 'CLEARING' && clearingRows.includes(r));
     const visRow = r - HIDDEN_ROWS;
@@ -1342,6 +2428,7 @@ function renderBoard() {
     }
   }
 
+  // วาดชิ้นส่วนปัจจุบันและเงา Ghost Piece
   if (activePiece && gameState === 'PLAYING') {
     const matrix = SHAPES[activePiece.type][activePiece.rot];
     if (gameMode === 'Modern') {
@@ -1362,20 +2449,74 @@ function renderBoard() {
       }
     }
   }
+
+  // วาดคลื่นกระแทกระเบิด (Shockwaves)
+  shockwaves.forEach(sw => sw.draw(boardCtx));
+
+  // วาดอนุภาคเศษไม้ (Wood Chip Particles)
+  particles.forEach(p => p.draw(boardCtx));
+
+  // แฟลชสีขาวสำหรับ Tetris 4 แถว (≈ 120 ms)
+  if (whiteFlashTimer > 0 && !reducedEffects) {
+    const flashAlpha = Math.min(1, (whiteFlashTimer / 120) * 0.85);
+    boardCtx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+    boardCtx.fillRect(0, 0, width, height);
+  }
+
+  // ข้อความ COMBO ×N กลางกระดาน (เมื่อ combo >= 2)
+  if (comboTextTimer > 0) {
+    const progress = comboTextTimer / 800; // 1 -> 0
+    const alpha = Math.min(1, progress * 1.4);
+    const scale = reducedEffects ? 1 : (1 + (1 - progress) * 0.25);
+
+    boardCtx.save();
+    boardCtx.translate(width / 2, height * 0.42);
+    boardCtx.scale(scale, scale);
+    boardCtx.textAlign = 'center';
+    boardCtx.textBaseline = 'middle';
+
+    const fontSize = comboTextCount >= 9 ? Math.round(cellSize * 1.35) : Math.round(cellSize * 1.10);
+    boardCtx.font = `900 ${fontSize}px system-ui, sans-serif`;
+
+    if (!reducedEffects) {
+      boardCtx.shadowColor = comboTextColor;
+      boardCtx.shadowBlur = 18;
+    }
+    boardCtx.fillStyle = comboTextColor;
+    boardCtx.globalAlpha = alpha;
+    boardCtx.fillText(`COMBO ×${comboTextCount}`, 0, 0);
+    boardCtx.restore();
+  }
+
+  boardCtx.restore();
 }
 
 function drawMiniPiece(ctx, type, boxWidth, offsetY, boxHeight, alpha = 1) {
   if (!type) return;
+
+  if (type === 'BOMB') {
+    const mSize = Math.min(boxWidth * 0.48, boxHeight * 0.58);
+    const sX = (boxWidth - mSize) / 2;
+    const sY = offsetY + (boxHeight - mSize) / 2;
+    drawWoodenBlock(ctx, sX, sY, mSize, 'BOMB', true, alpha);
+    return;
+  }
+
   const matrix = SHAPES[type][0];
   let minR = 4, maxR = -1, minC = 4, maxC = -1;
   for (let r = 0; r < matrix.length; r++) {
     for (let c = 0; c < matrix[r].length; c++) {
-      if (matrix[r][c]) { minR = Math.min(minR, r); maxR = Math.max(maxR, r); minC = Math.min(minC, c); maxC = Math.max(maxC, c); }
+      if (matrix[r][c]) {
+        minR = Math.min(minR, r); maxR = Math.max(maxR, r);
+        minC = Math.min(minC, c); maxC = Math.max(maxC, c);
+      }
     }
   }
+  const pCols = maxC - minC + 1, pRows = maxR - minR + 1;
   const mSize = Math.min(boxWidth / 4.4, boxHeight / 2.6);
-  const startX = (boxWidth - (maxC - minC + 1) * mSize) / 2;
-  const startY = offsetY + (boxHeight - (maxR - minR + 1) * mSize) / 2;
+  const startX = (boxWidth - pCols * mSize) / 2;
+  const startY = offsetY + (boxHeight - pRows * mSize) / 2;
+
   for (let r = minR; r <= maxR; r++) {
     for (let c = minC; c <= maxC; c++) {
       if (matrix[r][c]) {
@@ -1385,127 +2526,278 @@ function drawMiniPiece(ctx, type, boxWidth, offsetY, boxHeight, alpha = 1) {
   }
 }
 
-function renderSidePanels() {
-  const holdRect = holdCanvas.getBoundingClientRect();
-  holdCtx.clearRect(0, 0, holdRect.width, holdRect.height);
-  if (gameMode === 'Modern' && holdPieceType) drawMiniPiece(holdCtx, holdPieceType, holdRect.width, 0, holdRect.height, canHold ? 1 : 0.45);
-
-  const nextRect = nextCanvas.getBoundingClientRect();
-  nextCtx.clearRect(0, 0, nextRect.width, nextRect.height);
-  const slotH = nextRect.height / 3;
-  const previewCount = (gameMode === 'Classic') ? 1 : 3;
-  for (let i = 0; i < previewCount; i++) drawMiniPiece(nextCtx, nextQueue[i], nextRect.width, i * slotH, slotH, 1);
+function renderHold() {
+  holdCtx.clearRect(0, 0, holdCanvas.width, holdCanvas.height);
+  if (gameMode === 'Classic') return;
+  drawMiniPiece(holdCtx, holdPieceType, holdCanvas.width / (window.devicePixelRatio || 1), 0, holdCanvas.height / (window.devicePixelRatio || 1), canHold ? 1 : 0.45);
 }
 
-let lastFrameTime = performance.now();
-function gameLoop(now) {
-  const dt = Math.min(100, now - lastFrameTime);
-  lastFrameTime = now;
+function renderNext() {
+  nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
+  const dpr = window.devicePixelRatio || 1;
+  const w = nextCanvas.width / dpr, h = nextCanvas.height / dpr;
+  const count = (gameMode === 'Classic') ? 1 : 3;
+  const slotH = h / count;
+  for (let i = 0; i < count; i++) {
+    drawMiniPiece(nextCtx, nextQueue[i], w, i * slotH, slotH, 1);
+  }
+}
 
-  if (gameState === 'PLAYING' && activePiece) {
-    if (inputState.dasDir !== 0) {
-      inputState.dasTimer += dt;
-      if (inputState.dasTimer >= DAS_MS) {
-        inputState.arrTimer += dt;
-        while (inputState.arrTimer >= ARR_MS) { inputState.arrTimer -= ARR_MS; if (!moveHorizontal(inputState.dasDir)) break; }
-      }
-    }
-    if (inputState.down) {
-      inputState.softDropTimer += dt;
-      while (inputState.softDropTimer >= 45) { inputState.softDropTimer -= 45; softDropStep(); }
-    }
-    dropAccumulator += dt;
-    const dropInterval = getDropInterval(level);
-    while (dropAccumulator >= dropInterval) {
-      dropAccumulator -= dropInterval;
-      if (!checkCollision(activePiece.x, activePiece.y + 1, activePiece.rot)) {
-        activePiece.y++;
-        if (activePiece.y > activePiece.lowestY) { activePiece.lowestY = activePiece.y; lockResets = 0; lockTimer = 0; }
-      }
-    }
-    isGrounded = checkCollision(activePiece.x, activePiece.y + 1, activePiece.rot);
-    if (isGrounded) {
-      lockTimer += dt;
-      if (lockTimer >= (gameMode === 'Classic' ? LOCK_DELAY_CLASSIC_MS : LOCK_DELAY_MODERN_MS)) lockActivePiece();
-    } else { lockTimer = 0; }
-  } else if (gameState === 'CLEARING') {
-    clearAnimTimer += dt;
-    if (clearAnimTimer >= LINE_CLEAR_ANIM_MS) finishLineClear();
+// ==========================================
+// ลูปหลักของเกม (Game Loop & Timers)
+// ==========================================
+let lastTime = 0;
+
+function update(dt) {
+  // อัปเดตตัวจับเวลาเอฟเฟกต์
+  if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
+  if (whiteFlashTimer > 0) whiteFlashTimer = Math.max(0, whiteFlashTimer - dt);
+  if (comboTextTimer > 0) comboTextTimer = Math.max(0, comboTextTimer - dt);
+
+  // อัปเดตอนุภาคเศษไม้และคลื่นกระแทก
+  for (let i = particles.length - 1; i >= 0; i--) {
+    particles[i].update(dt);
+    if (particles[i].life <= 0) particles.splice(i, 1);
+  }
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    shockwaves[i].update(dt);
+    if (shockwaves[i].life <= 0) shockwaves.splice(i, 1);
   }
 
+  // อัปเดตแสงเรืองแสงขอบกระดานตาม Combo (เรืองแสงแรงขึ้นตาม Combo และค่อยๆ ดับลงเมื่อ Combo ขาด)
+  const container = boardCanvas.parentElement;
+  if (comboCount >= 1) {
+    targetGlowIntensity = Math.min(1, comboCount / 7);
+  } else {
+    targetGlowIntensity = 0;
+  }
+  boardGlowIntensity += (targetGlowIntensity - boardGlowIntensity) * Math.min(1, dt * 0.006);
+
+  if (container) {
+    if (boardGlowIntensity > 0.02) {
+      const glowColor = comboCount >= 8 ? '255, 45, 117' : (comboCount >= 5 ? '255, 140, 0' : (comboCount >= 3 ? '255, 215, 0' : '44, 184, 232'));
+      const spread = Math.round(6 + boardGlowIntensity * 20);
+      const blur = Math.round(14 + boardGlowIntensity * 32);
+      container.style.boxShadow = `0 0 ${blur}px ${spread}px rgba(${glowColor}, ${boardGlowIntensity * 0.75}), inset 0 0 10px rgba(${glowColor}, ${boardGlowIntensity * 0.35})`;
+      container.style.borderColor = `rgba(${glowColor}, ${0.25 + boardGlowIntensity * 0.75})`;
+    } else {
+      container.style.boxShadow = '0 10px 28px rgba(0,0,0,0.5), inset 0 2px 6px rgba(0,0,0,0.6)';
+      container.style.borderColor = 'rgba(255,255,255,0.1)';
+    }
+  }
+
+  if (gameState === 'CLEARING') {
+    clearAnimTimer += dt;
+    if (clearAnimTimer >= LINE_CLEAR_ANIM_MS) finishLineClear();
+    return;
+  }
+  if (gameState !== 'PLAYING' || !activePiece) return;
+
+  // การเลื่อนซ้าย/ขวาต่อเนื่อง (DAS / ARR)
+  if (inputState.dasDir !== 0) {
+    inputState.dasTimer += dt;
+    if (inputState.dasTimer >= DAS_MS) {
+      inputState.arrTimer += dt;
+      while (inputState.arrTimer >= ARR_MS) {
+        moveHorizontal(inputState.dasDir);
+        inputState.arrTimer -= ARR_MS;
+      }
+    }
+  }
+
+  // Soft Drop
+  if (inputState.down) {
+    inputState.softDropTimer += dt;
+    const interval = 45;
+    while (inputState.softDropTimer >= interval) {
+      softDropStep();
+      inputState.softDropTimer -= interval;
+    }
+  }
+
+  // แรงดึงดูดการตกของบล็อก
+  const dropInterval = getDropInterval(level);
+  dropAccumulator += dt;
+  while (dropAccumulator >= dropInterval) {
+    dropAccumulator -= dropInterval;
+    if (!checkCollision(activePiece.x, activePiece.y + 1, activePiece.rot)) {
+      activePiece.y++;
+      isGrounded = false;
+      lockTimer = 0;
+    } else {
+      isGrounded = true;
+    }
+  }
+
+  // Lock Delay
+  if (checkCollision(activePiece.x, activePiece.y + 1, activePiece.rot)) {
+    isGrounded = true;
+    const lockMax = (gameMode === 'Classic') ? LOCK_DELAY_CLASSIC_MS : LOCK_DELAY_MODERN_MS;
+    lockTimer += dt;
+    if (lockTimer >= lockMax) lockActivePiece();
+  } else {
+    isGrounded = false;
+    lockTimer = 0;
+  }
+}
+
+function gameLoop(now) {
+  const dt = Math.min(now - lastTime, 100);
+  lastTime = now;
+  update(dt);
   renderBoard();
-  renderSidePanels();
+  renderHold();
+  renderNext();
   requestAnimationFrame(gameLoop);
 }
 
-window.addEventListener('keydown', (e) => {
-  const tag = document.activeElement ? document.activeElement.tagName : '';
-  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
-  if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Space'].includes(e.code)) e.preventDefault();
-  if (e.repeat) return;
+// ==========================================
+// การควบคุมโหมดและหน้าต่างเมนู (UI Control)
+// ==========================================
+function setGameMode(mode) {
+  gameMode = mode;
+  document.getElementById('modeBadge').textContent = mode.toUpperCase();
+  document.querySelectorAll('.mode-card').forEach(c => c.classList.toggle('active', c.getAttribute('data-mode') === mode));
+  applyModeUIRules();
+  if (['PLAYING', 'PAUSED', 'GAMEOVER'].includes(gameState)) startNewGame();
+}
 
-  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
-  if (e.code === 'KeyR') {
-    if (isLockedByMandatoryFeedback()) return;
-    if (['PLAYING', 'PAUSED', 'GAMEOVER'].includes(gameState)) startNewGame();
-    return;
+function applyModeUIRules() {
+  const isClassic = (gameMode === 'Classic');
+  const holdBox = document.getElementById('holdPanelBox');
+  const nextTitle = document.getElementById('nextPanelTitle');
+  const touchHold = document.getElementById('touchHoldBtn');
+  const touchDrop = document.getElementById('touchHardDropBtn');
+
+  if (holdBox) holdBox.classList.toggle('disabled-panel', isClassic);
+  if (nextTitle) nextTitle.textContent = isClassic ? 'NEXT (1)' : 'NEXT (3)';
+  if (touchHold) touchHold.classList.toggle('disabled-btn', isClassic);
+  if (touchDrop) touchDrop.classList.toggle('disabled-btn', isClassic);
+}
+
+function closeOverlays() {
+  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('pauseOverlay').classList.add('hidden');
+  document.getElementById('gameOverOverlay').classList.add('hidden');
+  document.getElementById('settingsOverlay').classList.add('hidden');
+}
+
+function openStartMenu() {
+  gameState = 'START';
+  audioMgr.pauseBgm();
+  closeOverlays();
+  document.getElementById('startOverlay').classList.remove('hidden');
+}
+
+function togglePause() {
+  if (gameState === 'PLAYING') {
+    gameState = 'PAUSED';
+    audioMgr.pauseBgm();
+    document.getElementById('pauseOverlay').classList.remove('hidden');
+  } else if (gameState === 'PAUSED') {
+    gameState = 'PLAYING';
+    audioMgr.resumeBgm();
+    document.getElementById('pauseOverlay').classList.add('hidden');
   }
+}
+
+function openSettingsModal() {
+  audioMgr.init();
+  // อัปเดตสถานะของ UI ให้ตรงกับการตั้งค่าปัจจุบัน
+  document.getElementById('chkToggleBgm').checked = audioMgr.bgmEnabled;
+  document.getElementById('sliderBgmVolume').value = Math.round(audioMgr.bgmVolume * 100);
+  document.getElementById('txtBgmVolume').textContent = `${Math.round(audioMgr.bgmVolume * 100)}%`;
+
+  document.getElementById('chkToggleSfx').checked = audioMgr.sfxEnabled;
+  document.getElementById('sliderSfxVolume').value = Math.round(audioMgr.sfxVolume * 100);
+  document.getElementById('txtSfxVolume').textContent = `${Math.round(audioMgr.sfxVolume * 100)}%`;
+
+  document.getElementById('chkReducedEffects').checked = reducedEffects;
+  document.getElementById('settingsOverlay').classList.remove('hidden');
+}
+
+function closeSettingsModal() {
+  document.getElementById('settingsOverlay').classList.add('hidden');
+  updateSoundBtnIcon();
+}
+
+// การควบคุมคีย์บอร์ด
+window.addEventListener('keydown', (e) => {
+  audioMgr.init();
+  if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Space'].includes(e.code)) e.preventDefault();
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
   if (gameState !== 'PLAYING') return;
 
-  switch (e.code) {
-    case 'ArrowLeft': inputState.left = true; inputState.dasDir = -1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(-1); break;
-    case 'ArrowRight': inputState.right = true; inputState.dasDir = 1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(1); break;
-    case 'ArrowDown': inputState.down = true; inputState.softDropTimer = 0; softDropStep(); break;
-    case 'ArrowUp':
-    case 'KeyX': rotatePiece(1); break;
-    case 'KeyZ': rotatePiece(-1); break;
-    case 'Space': hardDrop(); break;
-    case 'KeyC':
-    case 'ShiftLeft':
-    case 'ShiftRight': holdCurrentPiece(); break;
+  if (e.code === 'ArrowLeft') {
+    if (!inputState.left) { inputState.left = true; inputState.dasDir = -1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(-1); }
+  } else if (e.code === 'ArrowRight') {
+    if (!inputState.right) { inputState.right = true; inputState.dasDir = 1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(1); }
+  } else if (e.code === 'ArrowDown') {
+    inputState.down = true;
+  } else if (e.code === 'ArrowUp' || e.code === 'KeyX') {
+    rotatePiece(1);
+  } else if (e.code === 'KeyZ') {
+    rotatePiece(-1);
+  } else if (e.code === 'Space') {
+    hardDrop();
+  } else if (e.code === 'KeyC' || e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+    holdCurrentPiece();
   }
 });
 
 window.addEventListener('keyup', (e) => {
-  if (e.code === 'ArrowLeft') { inputState.left = false; inputState.dasDir = inputState.right ? 1 : 0; inputState.dasTimer = 0; }
-  if (e.code === 'ArrowRight') { inputState.right = false; inputState.dasDir = inputState.left ? -1 : 0; inputState.dasTimer = 0; }
-  if (e.code === 'ArrowDown') inputState.down = false;
+  if (e.code === 'ArrowLeft') {
+    inputState.left = false;
+    if (inputState.right) { inputState.dasDir = 1; inputState.dasTimer = 0; } else { inputState.dasDir = 0; }
+  } else if (e.code === 'ArrowRight') {
+    inputState.right = false;
+    if (inputState.left) { inputState.dasDir = -1; inputState.dasTimer = 0; } else { inputState.dasDir = 0; }
+  } else if (e.code === 'ArrowDown') {
+    inputState.down = false;
+    inputState.softDropTimer = 0;
+  }
 });
 
-// รองรับ Touch Events สำหรับมือถือและแท็บเล็ตอย่างไร้รอยต่อ
-document.querySelectorAll('.touch-btn').forEach(btn => {
-  const action = btn.getAttribute('data-action');
-  const startAction = (e) => {
-    e.preventDefault();
-    if (gameState !== 'PLAYING') return;
-    if (action === 'left') { inputState.dasDir = -1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(-1); }
-    else if (action === 'right') { inputState.dasDir = 1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(1); }
-    else if (action === 'softDrop') { inputState.down = true; inputState.softDropTimer = 0; softDropStep(); }
-    else if (action === 'rotCW') rotatePiece(1);
-    else if (action === 'rotCCW') rotatePiece(-1);
-    else if (action === 'hardDrop') hardDrop();
-    else if (action === 'hold') holdCurrentPiece();
+// การควบคุมปุ่มสัมผัสบนหน้าจอ
+function setupTouchControls() {
+  const touchMap = {
+    left: () => moveHorizontal(-1),
+    right: () => moveHorizontal(1),
+    rotCW: () => rotatePiece(1),
+    rotCCW: () => rotatePiece(-1),
+    softDrop: () => softDropStep(),
+    hardDrop: () => hardDrop(),
+    hold: () => holdCurrentPiece()
   };
-  const endAction = (e) => {
-    e.preventDefault();
-    if (action === 'left' || action === 'right') inputState.dasDir = 0;
-    else if (action === 'softDrop') inputState.down = false;
-  };
-  btn.addEventListener('pointerdown', startAction);
-  btn.addEventListener('pointerup', endAction);
-  btn.addEventListener('pointerleave', endAction);
-  btn.addEventListener('pointercancel', endAction);
-});
 
-const modeCards = document.querySelectorAll('.mode-card');
-modeCards.forEach(card => {
-  card.addEventListener('click', () => {
-    gameMode = card.getAttribute('data-mode');
-    modeCards.forEach(c => c.classList.toggle('active', c === card));
-    applyModeUIRules();
+  document.querySelectorAll('.touch-btn').forEach(btn => {
+    const action = btn.getAttribute('data-action');
+    if (!action || !touchMap[action]) return;
+
+    btn.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      audioMgr.init();
+      if (action === 'left') { inputState.left = true; inputState.dasDir = -1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(-1); }
+      else if (action === 'right') { inputState.right = true; inputState.dasDir = 1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(1); }
+      else if (action === 'softDrop') { inputState.down = true; softDropStep(); }
+      else { touchMap[action](); }
+    }, { passive: false });
+
+    btn.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      if (action === 'left') { inputState.left = false; if (inputState.right) { inputState.dasDir = 1; } else { inputState.dasDir = 0; } }
+      else if (action === 'right') { inputState.right = false; if (inputState.left) { inputState.dasDir = -1; } else { inputState.dasDir = 0; } }
+      else if (action === 'softDrop') { inputState.down = false; }
+    }, { passive: false });
+
+    btn.addEventListener('click', () => {
+      audioMgr.init();
+      if (['rotCW', 'rotCCW', 'hardDrop', 'hold'].includes(action)) touchMap[action]();
+    });
   });
-});
+}
 
+// การเลือกดาว Feedback
 const starBtns = document.querySelectorAll('.star-btn');
 starBtns.forEach(btn => {
   btn.addEventListener('click', () => {
@@ -1515,6 +2807,7 @@ starBtns.forEach(btn => {
   });
 });
 
+// ส่ง Feedback และบันทึกสถิติไปยัง Google Apps Script
 document.getElementById('btnSubmitFeedback').addEventListener('click', async () => {
   if (feedbackSubmitted) return;
   const scriptUrl = getScriptUrl();
@@ -1528,7 +2821,7 @@ document.getElementById('btnSubmitFeedback').addEventListener('click', async () 
     return;
   }
   if (!scriptUrl) {
-    statusEl.textContent = '⚠️ กรุณาตั้งค่า Google Apps Script URL ที่ปุ่ม ⚙️ ก่อนครับ';
+    statusEl.textContent = '⚠️ ไม่พบ URL ปลายทางสำหรับส่งข้อมูล';
     statusEl.className = 'status-msg err';
     return;
   }
@@ -1559,7 +2852,8 @@ document.getElementById('btnSubmitFeedback').addEventListener('click', async () 
   }
 });
 
-document.getElementById('btnStartGame').addEventListener('click', () => { sfx.init(); startNewGame(); });
+// Event Listeners สำหรับปุ่มต่างๆ
+document.getElementById('btnStartGame').addEventListener('click', () => { audioMgr.init(); startNewGame(); });
 document.getElementById('btnResumeGame').addEventListener('click', () => togglePause());
 document.getElementById('btnRestartFromPause').addEventListener('click', () => startNewGame());
 document.getElementById('btnChangeModeFromPause').addEventListener('click', () => openStartMenu());
@@ -1569,32 +2863,65 @@ document.getElementById('btnModeSwitch').addEventListener('click', () => openSta
 document.getElementById('btnPause').addEventListener('click', () => togglePause());
 document.getElementById('btnRestartTop').addEventListener('click', () => startNewGame());
 
-document.getElementById('btnSound').addEventListener('click', (e) => {
-  sfx.enabled = !sfx.enabled;
-  e.currentTarget.textContent = sfx.enabled ? '🔊 เสียง' : '🔇 ปิดเสียง';
+// เปิดหน้าต่างตั้งค่าเสียงและเอฟเฟกต์
+document.getElementById('btnSound').addEventListener('click', () => {
+  openSettingsModal();
+});
+document.getElementById('btnSettingsFromPause').addEventListener('click', () => {
+  openSettingsModal();
+});
+document.getElementById('btnCloseSettings').addEventListener('click', () => {
+  closeSettingsModal();
 });
 
-document.getElementById('btnConfig').addEventListener('click', () => {
-  document.getElementById('scriptUrlInput').value = getScriptUrl();
-  document.getElementById('configOverlay').classList.remove('hidden');
+// ควบคุมการสลับและปรับระดับเสียง BGM
+document.getElementById('chkToggleBgm').addEventListener('change', (e) => {
+  audioMgr.setBgmEnabled(e.target.checked);
+  updateSoundBtnIcon();
+});
+document.getElementById('sliderBgmVolume').addEventListener('input', (e) => {
+  const val = parseInt(e.target.value, 10);
+  document.getElementById('txtBgmVolume').textContent = `${val}%`;
+  audioMgr.setBgmVolume(val / 100);
 });
 
-document.getElementById('btnSaveConfig').addEventListener('click', () => {
-  try { localStorage.setItem('tetris_google_script_url', document.getElementById('scriptUrlInput').value.trim()); } catch (e) {}
-  document.getElementById('configOverlay').classList.add('hidden');
+// ควบคุมการสลับและปรับระดับเสียง SFX
+document.getElementById('chkToggleSfx').addEventListener('change', (e) => {
+  audioMgr.setSfxEnabled(e.target.checked);
+  updateSoundBtnIcon();
+});
+document.getElementById('sliderSfxVolume').addEventListener('input', (e) => {
+  const val = parseInt(e.target.value, 10);
+  document.getElementById('txtSfxVolume').textContent = `${val}%`;
+  audioMgr.setSfxVolume(val / 100);
 });
 
-document.getElementById('btnCloseConfig').addEventListener('click', () => {
-  document.getElementById('configOverlay').classList.add('hidden');
+// ควบคุมสวิตช์ "ลดเอฟเฟกต์"
+document.getElementById('chkReducedEffects').addEventListener('change', (e) => {
+  reducedEffects = e.target.checked;
+  try { localStorage.setItem('tetris_wood_reduced_effects', String(reducedEffects)); } catch (err) {}
+});
+
+// การเลือกโหมดเกม
+document.querySelectorAll('.mode-card').forEach(card => {
+  card.addEventListener('click', () => {
+    setGameMode(card.getAttribute('data-mode'));
+  });
 });
 
 window.addEventListener('DOMContentLoaded', () => {
+  try { localStorage.removeItem('tetris_google_script_url'); } catch (e) {}
+  initSecurityProtection();
+  loadSavedData();
   applyModeUIRules();
+  updateSoundBtnIcon();
   board = createEmptyBoard();
   initNextQueue();
+  setupTouchControls();
   resizeCanvases();
   requestAnimationFrame(gameLoop);
 });
+})();
 </script>
 </body>
 </html>
