@@ -1,0 +1,1600 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Tetris — Mobile & Tablet Optimized</title>
+<style>
+  :root {
+    --bg-main: #2b2f3a;
+    --bg-panel: #222630;
+    --bg-card: #343947;
+    --text-main: #f3f5f8;
+    --text-muted: #9aa3b5;
+    --accent: #2cb8e8;
+    --accent-pink: #f06a8f;
+    --accent-green: #3f9f3f;
+    --accent-orange: #f5a02a;
+    --border-soft: rgba(255, 255, 255, 0.09);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
+  }
+
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: radial-gradient(circle at 50% 25%, #373c4b 0%, #2b2f3a 60%, #1f222b 100%);
+    color: var(--text-main);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans Thai", sans-serif;
+    touch-action: none;
+  }
+
+  .app-wrapper {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    height: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 6px 10px;
+  }
+
+  /* แถบด้านบน */
+  .top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 2px 4px;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-weight: 800;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+    color: #fff;
+    text-shadow: 0 2px 8px rgba(44, 184, 232, 0.4);
+  }
+
+  .brand-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 3px;
+    background: var(--accent-pink);
+    box-shadow: 0 0 8px var(--accent-pink);
+  }
+
+  .mode-badge {
+    font-size: 0.68rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 999px;
+    background: rgba(44, 184, 232, 0.18);
+    color: var(--accent);
+    border: 1px solid rgba(44, 184, 232, 0.35);
+  }
+
+  .mode-badge.classic {
+    background: rgba(245, 160, 42, 0.18);
+    color: var(--accent-orange);
+    border-color: rgba(245, 160, 42, 0.35);
+  }
+
+  .top-actions {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .btn-icon {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 5px 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.1s, background 0.15s, opacity 0.2s;
+  }
+
+  .btn-icon:hover {
+    background: #404657;
+  }
+
+  .btn-icon:active {
+    transform: scale(0.95);
+  }
+
+  .btn-icon:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* พื้นที่กระดานและแผงข้อมูล (ปรับให้กระดานเด่นและพอดีจอแนวดิ่ง/แนวนอน) */
+  .stage-area {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    padding: 2px 0;
+  }
+
+  .side-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 105px;
+    flex-shrink: 0;
+  }
+
+  .panel-box {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 10px;
+    padding: 6px 8px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 12px rgba(0,0,0,0.25);
+    text-align: center;
+    transition: opacity 0.2s;
+  }
+
+  .panel-box.disabled-panel {
+    opacity: 0.38;
+  }
+
+  .panel-title {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-muted);
+    margin-bottom: 2px;
+  }
+
+  .panel-value {
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .panel-value.highlight {
+    color: var(--accent);
+  }
+
+  .mini-canvas {
+    display: block;
+    margin: 0 auto;
+    width: 76px;
+    height: 56px;
+  }
+
+  .mini-canvas.next-canvas {
+    height: 145px;
+  }
+
+  /* กรอบกระดานหลัก */
+  .board-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    max-height: 100%;
+    aspect-ratio: 1 / 2;
+    background: #1e222b;
+    border-radius: 12px;
+    padding: 4px;
+    border: 2px solid rgba(255,255,255,0.1);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.5), inset 0 2px 6px rgba(0,0,0,0.6);
+  }
+
+  #boardCanvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    border-radius: 8px;
+  }
+
+  /* ปุ่มควบคุมบนหน้าจอสัมผัส (ออกแบบสำหรับนิ้วโป้งกดง่ายบนมือถือ/แท็บเล็ต) */
+  .touch-controls {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 6px;
+    width: 100%;
+    max-width: 500px;
+    padding-bottom: 2px;
+    flex-shrink: 0;
+  }
+
+  .touch-btn {
+    background: var(--bg-card);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 12px;
+    padding: 12px 6px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    text-align: center;
+    cursor: pointer;
+    box-shadow: 0 4px 0 #1b1e26;
+    transition: transform 0.05s, box-shadow 0.05s, opacity 0.2s;
+    touch-action: manipulation;
+  }
+
+  .touch-btn:active {
+    transform: translateY(3px);
+    box-shadow: 0 1px 0 #1b1e26;
+    background: #454b5e;
+  }
+
+  .touch-btn.accent-drop {
+    background: #3b4b6b;
+    border-color: rgba(44, 184, 232, 0.35);
+    padding: 10px 6px;
+  }
+
+  .touch-btn.accent-hold {
+    background: #4a3849;
+    border-color: rgba(240, 106, 143, 0.35);
+  }
+
+  .touch-btn.disabled-btn {
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  /* หน้าจอ Overlay */
+  .overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(18, 20, 27, 0.86);
+    backdrop-filter: blur(6px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    padding: 12px;
+  }
+
+  .overlay.hidden {
+    display: none;
+  }
+
+  .modal-card {
+    background: #2b303c;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 18px;
+    padding: 18px 20px;
+    width: 100%;
+    max-width: 440px;
+    max-height: 94vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6);
+    text-align: center;
+  }
+
+  .modal-title {
+    font-size: 1.45rem;
+    font-weight: 800;
+    margin-bottom: 4px;
+    color: #fff;
+  }
+
+  .modal-subtitle {
+    font-size: 0.82rem;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  /* กล่องเลือกโหมด */
+  .setup-section {
+    text-align: left;
+    margin-bottom: 12px;
+  }
+
+  .setup-label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  .mode-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .mode-card {
+    background: var(--bg-panel);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 10px 8px;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s, background 0.15s;
+  }
+
+  .mode-card.active[data-mode="Modern"] {
+    border-color: var(--accent);
+    background: rgba(44, 184, 232, 0.12);
+  }
+
+  .mode-card.active[data-mode="Classic"] {
+    border-color: var(--accent-orange);
+    background: rgba(245, 160, 42, 0.12);
+  }
+
+  .mode-card-title {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: #fff;
+    margin-bottom: 3px;
+  }
+
+  .mode-card-desc {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    line-height: 1.3;
+  }
+
+  .controls-table {
+    width: 100%;
+    text-align: left;
+    border-collapse: collapse;
+    margin: 6px 0 12px;
+    font-size: 0.76rem;
+  }
+
+  .controls-table td {
+    padding: 3px 5px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+  }
+
+  .controls-table td:first-child {
+    font-weight: 700;
+    color: var(--accent);
+    width: 42%;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #2cb8e8, #1d8db5);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    padding: 11px 20px;
+    font-size: 0.95rem;
+    font-weight: 800;
+    cursor: pointer;
+    width: 100%;
+    box-shadow: 0 4px 14px rgba(44, 184, 232, 0.35);
+    transition: transform 0.1s, filter 0.15s, opacity 0.2s;
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    filter: brightness(1.08);
+  }
+
+  .btn-primary:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .btn-secondary {
+    background: #3a4050;
+    color: #fff;
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 9px 16px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 6px;
+    transition: opacity 0.2s, background 0.15s;
+  }
+
+  .btn-secondary:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* สถิติตอนจบเกม & Feedback */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    margin: 8px 0 12px;
+  }
+
+  .stat-chip {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-soft);
+    border-radius: 8px;
+    padding: 6px 4px;
+  }
+
+  .stat-chip span {
+    display: block;
+    font-size: 0.64rem;
+    color: var(--text-muted);
+  }
+
+  .stat-chip strong {
+    font-size: 0.95rem;
+    color: var(--accent-orange);
+  }
+
+  .feedback-section {
+    background: rgba(0, 0, 0, 0.24);
+    border: 1px solid rgba(245, 160, 42, 0.35);
+    border-radius: 12px;
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    text-align: left;
+  }
+
+  .feedback-section h4 {
+    font-size: 0.85rem;
+    margin-bottom: 3px;
+    color: #fff;
+    text-align: center;
+  }
+
+  .mandatory-badge {
+    display: block;
+    text-align: center;
+    font-size: 0.72rem;
+    color: #fac473;
+    margin-bottom: 6px;
+  }
+
+  .star-rating {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin: 4px 0 8px;
+  }
+
+  .star-btn {
+    background: none;
+    border: none;
+    font-size: 1.7rem;
+    line-height: 1;
+    cursor: pointer;
+    color: #525868;
+    transition: transform 0.12s, color 0.12s;
+  }
+
+  .star-btn.active {
+    color: #f5a02a;
+    text-shadow: 0 0 10px rgba(245, 160, 42, 0.55);
+  }
+
+  .form-input, .form-textarea {
+    width: 100%;
+    background: #1e222b;
+    border: 1px solid rgba(255,255,255,0.14);
+    border-radius: 8px;
+    padding: 8px 10px;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.84rem;
+    margin-bottom: 6px;
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .form-input:focus, .form-textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
+
+  .form-textarea {
+    resize: vertical;
+    min-height: 54px;
+  }
+
+  .anon-hint {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    margin: -4px 0 6px;
+  }
+
+  .status-msg {
+    font-size: 0.76rem;
+    text-align: center;
+    margin-top: 4px;
+    min-height: 1.2em;
+  }
+
+  .status-msg.ok { color: #5ce075; font-weight: 700; }
+  .status-msg.err { color: #ff6b6b; }
+  .status-msg.wait { color: var(--accent); }
+
+  /* สำหรับแท็บเล็ตและจอแนวนอน */
+  @media (min-width: 600px) {
+    .app-wrapper {
+      max-width: 720px;
+      padding: 10px 16px;
+    }
+    .side-panel {
+      width: 120px;
+    }
+    .touch-btn {
+      padding: 14px 8px;
+      font-size: 0.9rem;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-wrapper">
+  <!-- แถบด้านบน -->
+  <header class="top-bar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span>TETRIS</span>
+      <span id="modeBadge" class="mode-badge">MODERN</span>
+    </div>
+    <div class="top-actions">
+      <button id="btnModeSwitch" class="btn-icon" title="โหมด">🎮 โหมด</button>
+      <button id="btnSound" class="btn-icon" title="เสียง">🔊 เสียง</button>
+      <button id="btnPause" class="btn-icon" title="พัก">⏸ พัก</button>
+      <button id="btnRestartTop" class="btn-icon" title="เริ่มใหม่">🔄 เริ่มใหม่</button>
+      <button id="btnConfig" class="btn-icon" title="ตั้งค่า Sheet">⚙️</button>
+    </div>
+  </header>
+
+  <!-- พื้นที่เล่นเกม -->
+  <main class="stage-area">
+    <!-- แผงซ้าย: Hold & สถิติ -->
+    <aside class="side-panel">
+      <div id="holdPanelBox" class="panel-box">
+        <div class="panel-title">HOLD (C)</div>
+        <canvas id="holdCanvas" class="mini-canvas"></canvas>
+      </div>
+      <div class="panel-box">
+        <div class="panel-title">SCORE</div>
+        <div id="scoreVal" class="panel-value highlight">0</div>
+      </div>
+      <div class="panel-box">
+        <div class="panel-title">BEST</div>
+        <div id="highScoreVal" class="panel-value">0</div>
+      </div>
+      <div class="panel-box">
+        <div class="panel-title">LEVEL</div>
+        <div id="levelVal" class="panel-value">1</div>
+      </div>
+      <div class="panel-box">
+        <div class="panel-title">LINES</div>
+        <div id="linesVal" class="panel-value">0</div>
+      </div>
+    </aside>
+
+    <!-- กระดานหลัก 10x20 -->
+    <div class="board-container">
+      <canvas id="boardCanvas"></canvas>
+    </div>
+
+    <!-- แผงขวา: Next Queue -->
+    <aside class="side-panel">
+      <div class="panel-box">
+        <div id="nextPanelTitle" class="panel-title">NEXT (3)</div>
+        <canvas id="nextCanvas" class="mini-canvas next-canvas"></canvas>
+      </div>
+    </aside>
+  </main>
+
+  <!-- ปุ่มควบคุมสำหรับหน้าจอสัมผัส (มือถือและแท็บเล็ต) -->
+  <nav class="touch-controls" aria-label="ปุ่มควบคุมเกม">
+    <button id="touchHoldBtn" class="touch-btn accent-hold" data-action="hold">HOLD</button>
+    <button class="touch-btn" data-action="left">◀ ซ้าย</button>
+    <button class="touch-btn" data-action="right">ขวา ▶</button>
+    <button class="touch-btn" data-action="rotCCW">↺ หมุนซ้าย</button>
+    <button class="touch-btn" data-action="rotCW">↻ หมุนขวา</button>
+    <button class="touch-btn" data-action="softDrop">▼ ลงเร็ว</button>
+    <button id="touchHardDropBtn" class="touch-btn accent-drop" style="grid-column: span 6;" data-action="hardDrop">⤓ HARD DROP (วางทันที)</button>
+  </nav>
+</div>
+
+<!-- หน้าจอเริ่มต้น: เลือกโหมด -->
+<div id="startOverlay" class="overlay">
+  <div class="modal-card">
+    <h1 class="modal-title">TETRIS WOOD</h1>
+    <p class="modal-subtitle">เลือกรูปแบบการเล่นก่อนเข้าสู่เกม</p>
+
+    <div class="setup-section">
+      <span class="setup-label">🎮 เลือกโหมดการเล่น</span>
+      <div class="mode-selector" id="modeSelector">
+        <div class="mode-card active" data-mode="Modern">
+          <div class="mode-card-title">✨ แบบใหม่ (Modern)</div>
+          <div class="mode-card-desc">สุ่ม 7-Bag, SRS, Ghost, Hold และดู 3 ชิ้นถัดไป</div>
+        </div>
+        <div class="mode-card" data-mode="Classic">
+          <div class="mode-card-title">🕹️ ดั้งเดิม (Classic)</div>
+          <div class="mode-card-desc">สุ่มอิสระเรโทร, ไม่มีเงา/Hold, ล็อกทันที</div>
+        </div>
+      </div>
+    </div>
+
+    <table class="controls-table">
+      <tr><td>มือถือ / แท็บเล็ต</td><td>ใช้ปุ่มสัมผัสด้านล่างหน้าจอได้ทันที</td></tr>
+      <tr><td>คีย์บอร์ด</td><td>← → เลื่อน, ↓ ลงเร็ว, Space วาง, ↑/X/Z หมุน, C/Shift Hold</td></tr>
+    </table>
+
+    <button id="btnStartGame" class="btn-primary">▶ เริ่มเล่นเกม</button>
+  </div>
+</div>
+
+<!-- หน้าจอหยุดเกมชั่วคราว (Pause) -->
+<div id="pauseOverlay" class="overlay hidden">
+  <div class="modal-card">
+    <h2 class="modal-title">พักการเล่นชั่วคราว</h2>
+    <p class="modal-subtitle">เวลาถูกหยุดไว้ชั่วคราว</p>
+    <button id="btnResumeGame" class="btn-primary">▶ เล่นต่อ (Resume)</button>
+    <button id="btnRestartFromPause" class="btn-secondary">🔄 เริ่มเกมใหม่ (โหมดเดิม)</button>
+    <button id="btnChangeModeFromPause" class="btn-secondary">🎮 เปลี่ยนโหมดการเล่น</button>
+  </div>
+</div>
+
+<!-- หน้าจอจบเกม (Game Over) — บังคับส่ง Feedback ก่อนเล่นใหม่ -->
+<div id="gameOverOverlay" class="overlay hidden">
+  <div class="modal-card">
+    <h2 class="modal-title">GAME OVER</h2>
+    <p class="modal-subtitle">สรุปผลการเล่นของคุณ</p>
+
+    <div class="stats-grid">
+      <div class="stat-chip">
+        <span>โหมด</span>
+        <strong id="finalMode">Modern</strong>
+      </div>
+      <div class="stat-chip">
+        <span>คะแนน</span>
+        <strong id="finalScore">0</strong>
+      </div>
+      <div class="stat-chip">
+        <span>เลเวล</span>
+        <strong id="finalLevel">1</strong>
+      </div>
+      <div class="stat-chip">
+        <span>แถว</span>
+        <strong id="finalLines">0</strong>
+      </div>
+    </div>
+
+    <div class="feedback-section">
+      <h4>⭐ ให้คะแนน & ส่ง Feedback ก่อนเริ่มรอบใหม่</h4>
+      <span class="mandatory-badge">🔒 ส่งสถิติและ Feedback ด้านล่างเพื่อปลดล็อกปุ่มเล่นใหม่</span>
+
+      <div class="star-rating" id="starContainer">
+        <button type="button" class="star-btn active" data-star="1">★</button>
+        <button type="button" class="star-btn active" data-star="2">★</button>
+        <button type="button" class="star-btn active" data-star="3">★</button>
+        <button type="button" class="star-btn active" data-star="4">★</button>
+        <button type="button" class="star-btn active" data-star="5">★</button>
+      </div>
+
+      <input type="text" id="playerNameInput" class="form-input" placeholder="ชื่อผู้เล่น (เว้นว่าง = Anonymous)" maxlength="50">
+      <div class="anon-hint">* หากไม่กรอกชื่อ ระบบจะบันทึกเป็น "Anonymous" อัตโนมัติ</div>
+
+      <textarea id="feedbackInput" class="form-textarea" placeholder="พิมพ์ความคิดเห็นหรือข้อเสนอแนะเกี่ยวกับเกม... (จำเป็น)" maxlength="300" required></textarea>
+
+      <button type="button" id="btnSubmitFeedback" class="btn-primary" style="padding: 10px;">📤 ส่งสถิติและ Feedback เพื่อปลดล็อก</button>
+      <div id="feedbackStatus" class="status-msg"></div>
+    </div>
+
+    <button id="btnPlayAgain" class="btn-secondary" disabled>🔒 เล่นใหม่อีกครั้ง (ส่ง Feedback ก่อน)</button>
+    <button id="btnBackToMenu" class="btn-secondary" disabled>🔒 กลับหน้าเลือกโหมด (ส่ง Feedback ก่อน)</button>
+  </div>
+</div>
+
+<!-- หน้าจอตั้งค่า URL ของ Google Apps Script -->
+<div id="configOverlay" class="overlay hidden">
+  <div class="modal-card">
+    <h3 class="modal-title" style="font-size:1.2rem;">ตั้งค่า Google Apps Script URL</h3>
+    <p class="modal-subtitle">วาง Web App URL เพื่อเชื่อมต่อกับ Google Sheet</p>
+    <input type="url" id="scriptUrlInput" class="form-input" placeholder="https://script.google.com/a/macros/snru.ac.th/s/AKfycbxkdxr6cFLwx7qGUS1VBhDEfgG_soTtB7P-o9wA_v7LVqfui_sJDaOwRkyO14gtyPc/exec">
+    <button id="btnSaveConfig" class="btn-primary">💾 บันทึก URL</button>
+    <button id="btnCloseConfig" class="btn-secondary">ปิดหน้าต่าง</button>
+  </div>
+</div>
+
+<script>
+const DEFAULT_GOOGLE_SCRIPT_URL = "";
+
+const COLS = 10;
+const VISIBLE_ROWS = 20;
+const HIDDEN_ROWS = 2;
+const TOTAL_ROWS = VISIBLE_ROWS + HIDDEN_ROWS;
+
+const LOCK_DELAY_MODERN_MS = 500;
+const LOCK_DELAY_CLASSIC_MS = 80;
+const MAX_LOCK_RESETS = 15;
+const DAS_MS = 150;
+const ARR_MS = 40;
+const LINE_CLEAR_ANIM_MS = 220;
+
+const PIECE_TYPES = ['I', 'O', 'T', 'S', 'Z', 'J', 'L'];
+
+const PIECE_COLORS = {
+  I: { base: '#2cb8e8', light: '#7ad8f5', dark: '#177fa3', glow: 'rgba(44, 184, 232, 0.75)' },
+  O: { base: '#f5a02a', light: '#fac473', dark: '#b56d0f', glow: 'rgba(245, 160, 42, 0.75)' },
+  T: { base: '#f06a8f', light: '#f7a6bc', dark: '#ad3959', glow: 'rgba(240, 106, 143, 0.75)' },
+  S: { base: '#3f9f3f', light: '#76c876', dark: '#256925', glow: 'rgba(63, 159, 63, 0.75)' },
+  Z: { base: '#ff2a1a', light: '#ff7b70', dark: '#b31509', glow: 'rgba(255, 42, 26, 0.75)' },
+  J: { base: '#5a7de8', light: '#96adf5', dark: '#324da3', glow: 'rgba(90, 125, 232, 0.75)' },
+  L: { base: '#e8c42c', light: '#f5df7a', dark: '#a38614', glow: 'rgba(232, 196, 44, 0.75)' }
+};
+
+const SHAPES = {
+  I: [
+    [[0,0,0,0],[1,1,1,1],[0,0,0,0],[0,0,0,0]],
+    [[0,0,1,0],[0,0,1,0],[0,0,1,0],[0,0,1,0]],
+    [[0,0,0,0],[0,0,0,0],[1,1,1,1],[0,0,0,0]],
+    [[0,1,0,0],[0,1,0,0],[0,1,0,0],[0,1,0,0]]
+  ],
+  O: [
+    [[0,1,1,0],[0,1,1,0],[0,0,0,0]],
+    [[0,1,1,0],[0,1,1,0],[0,0,0,0]],
+    [[0,1,1,0],[0,1,1,0],[0,0,0,0]],
+    [[0,1,1,0],[0,1,1,0],[0,0,0,0]]
+  ],
+  T: [
+    [[0,1,0],[1,1,1],[0,0,0]],
+    [[0,1,0],[0,1,1],[0,1,0]],
+    [[0,0,0],[1,1,1],[0,1,0]],
+    [[0,1,0],[1,1,0],[0,1,0]]
+  ],
+  S: [
+    [[0,1,1],[1,1,0],[0,0,0]],
+    [[0,1,0],[0,1,1],[0,0,1]],
+    [[0,0,0],[0,1,1],[1,1,0]],
+    [[1,0,0],[1,1,0],[0,1,0]]
+  ],
+  Z: [
+    [[1,1,0],[0,1,1],[0,0,0]],
+    [[0,0,1],[0,1,1],[0,1,0]],
+    [[0,0,0],[1,1,0],[0,1,1]],
+    [[0,1,0],[1,1,0],[1,0,0]]
+  ],
+  J: [
+    [[1,0,0],[1,1,1],[0,0,0]],
+    [[0,1,1],[0,1,0],[0,1,0]],
+    [[0,0,0],[1,1,1],[0,0,1]],
+    [[0,1,0],[0,1,0],[1,1,0]]
+  ],
+  L: [
+    [[0,0,1],[1,1,1],[0,0,0]],
+    [[0,1,0],[0,1,0],[0,1,1]],
+    [[0,0,0],[1,1,1],[1,0,0]],
+    [[1,1,0],[0,1,0],[0,1,0]]
+  ]
+};
+
+const WALL_KICKS_JLSTZ = {
+  '0->1': [[0,0], [-1,0], [-1,-1], [0, 2], [-1, 2]],
+  '1->0': [[0,0], [ 1,0], [ 1, 1], [0,-2], [ 1,-2]],
+  '1->2': [[0,0], [ 1,0], [ 1, 1], [0,-2], [ 1,-2]],
+  '2->1': [[0,0], [-1,0], [-1,-1], [0, 2], [-1, 2]],
+  '2->3': [[0,0], [ 1,0], [ 1,-1], [0, 2], [ 1, 2]],
+  '3->2': [[0,0], [-1,0], [-1, 1], [0,-2], [-1,-2]],
+  '3->0': [[0,0], [-1,0], [-1, 1], [0,-2], [-1,-2]],
+  '0->3': [[0,0], [ 1,0], [ 1,-1], [0, 2], [ 1, 2]]
+};
+
+const WALL_KICKS_I = {
+  '0->1': [[0,0], [-2,0], [ 1,0], [-2, 1], [ 1,-2]],
+  '1->0': [[0,0], [ 2,0], [-1,0], [ 2,-1], [-1, 2]],
+  '1->2': [[0,0], [-1,0], [ 2,0], [-1,-2], [ 2, 1]],
+  '2->1': [[0,0], [ 1,0], [-2,0], [ 1, 2], [-2,-1]],
+  '2->3': [[0,0], [ 2,0], [-1,0], [ 2,-1], [-1, 2]],
+  '3->2': [[0,0], [-2,0], [ 1,0], [-2, 1], [ 1,-2]],
+  '3->0': [[0,0], [ 1,0], [-2,0], [ 1, 2], [-2,-1]],
+  '0->3': [[0,0], [-1,0], [ 2,0], [-1,-2], [ 2, 1]]
+};
+
+class SoundFX {
+  constructor() {
+    this.ctx = null;
+    this.enabled = true;
+  }
+  init() {
+    if (!this.ctx) {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) this.ctx = new AudioCtx();
+    }
+    if (this.ctx && this.ctx.state === 'suspended') this.ctx.resume();
+  }
+  tone(freq, duration = 0.07, type = 'triangle', gainVal = 0.12, slideFreq = null) {
+    if (!this.enabled) return;
+    this.init();
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, now);
+    if (slideFreq) osc.frequency.exponentialRampToValueAtTime(slideFreq, now + duration);
+    gain.gain.setValueAtTime(gainVal, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+    osc.connect(gain);
+    gain.connect(this.ctx.destination);
+    osc.start(now);
+    osc.stop(now + duration);
+  }
+  move()    { this.tone(240, 0.04, 'triangle', 0.08); }
+  rotate()  { this.tone(380, 0.06, 'sine', 0.10, 520); }
+  soft()    { this.tone(180, 0.03, 'sine', 0.06); }
+  lock()    { this.tone(140, 0.08, 'triangle', 0.14, 90); }
+  hold()    { this.tone(310, 0.07, 'sine', 0.10, 250); }
+  clear(n)  {
+    if (n === 4) {
+      [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => setTimeout(() => this.tone(f, 0.12, 'square', 0.10), i * 55));
+    } else {
+      this.tone(440 + n * 80, 0.15, 'triangle', 0.14, 680 + n * 90);
+    }
+  }
+  levelUp() { [440, 554, 659, 880].forEach((f, i) => setTimeout(() => this.tone(f, 0.1, 'sine', 0.11), i * 60)); }
+  gameOver() { [340, 300, 250, 190].forEach((f, i) => setTimeout(() => this.tone(f, 0.18, 'sawtooth', 0.09), i * 110)); }
+}
+
+const sfx = new SoundFX();
+
+let gameMode = 'Modern';
+let board = [];
+let bag = [];
+let nextQueue = [];
+let activePiece = null;
+let holdPieceType = null;
+let canHold = true;
+
+let score = 0;
+let highScore = 0;
+let lines = 0;
+let level = 1;
+
+let gameState = 'START';
+let dropAccumulator = 0;
+let lockTimer = 0;
+let lockResets = 0;
+let isGrounded = false;
+
+let clearingRows = [];
+let clearAnimTimer = 0;
+
+const inputState = { left: false, right: false, down: false, dasDir: 0, dasTimer: 0, arrTimer: 0, softDropTimer: 0 };
+let selectedRating = 5;
+let feedbackSubmitted = false;
+
+function getHighScoreKey() { return `tetris_wood_highscore_${gameMode.toLowerCase()}`; }
+function loadSavedData() {
+  try {
+    const savedHigh = localStorage.getItem(getHighScoreKey());
+    highScore = savedHigh ? (parseInt(savedHigh, 10) || 0) : 0;
+  } catch (e) { highScore = 0; }
+  document.getElementById('highScoreVal').textContent = highScore.toLocaleString();
+}
+
+function saveHighScore() {
+  if (score > highScore) {
+    highScore = score;
+    document.getElementById('highScoreVal').textContent = highScore.toLocaleString();
+    try { localStorage.setItem(getHighScoreKey(), String(highScore)); } catch (e) {}
+  }
+}
+
+function getScriptUrl() {
+  try {
+    const savedUrl = localStorage.getItem('tetris_google_script_url');
+    if (savedUrl && savedUrl.trim() !== '') return savedUrl.trim();
+  } catch (e) {}
+  return DEFAULT_GOOGLE_SCRIPT_URL;
+}
+
+function resolvePlayerName(rawInput) {
+  const trimmed = (rawInput || '').trim();
+  return trimmed !== '' ? trimmed : 'Anonymous';
+}
+
+function createEmptyBoard() {
+  return Array.from({ length: TOTAL_ROWS }, () => Array(COLS).fill(null));
+}
+
+function refillBag() {
+  const types = [...PIECE_TYPES];
+  for (let i = types.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [types[i], types[j]] = [types[j], types[i]];
+  }
+  bag.push(...types);
+}
+
+function pullNextType() {
+  if (gameMode === 'Classic') {
+    return PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)];
+  } else {
+    if (bag.length < 7) refillBag();
+    return bag.shift();
+  }
+}
+
+function initNextQueue() {
+  bag = [];
+  nextQueue = [];
+  if (gameMode === 'Modern') refillBag();
+  for (let i = 0; i < 4; i++) nextQueue.push(pullNextType());
+}
+
+function spawnPiece(type) {
+  const matrix = SHAPES[type][0];
+  const size = matrix.length;
+  activePiece = { type, rot: 0, x: Math.floor((COLS - size) / 2), y: 0, lowestY: 0 };
+  lockTimer = 0;
+  lockResets = 0;
+  isGrounded = false;
+  if (checkCollision(activePiece.x, activePiece.y, activePiece.rot)) triggerGameOver();
+}
+
+function spawnNextPiece() {
+  const nextType = nextQueue.shift();
+  nextQueue.push(pullNextType());
+  canHold = true;
+  spawnPiece(nextType);
+}
+
+function checkCollision(nx, ny, nrot, pieceType = activePiece.type) {
+  const matrix = SHAPES[pieceType][nrot];
+  for (let r = 0; r < matrix.length; r++) {
+    for (let c = 0; c < matrix[r].length; c++) {
+      if (!matrix[r][c]) continue;
+      const bx = nx + c;
+      const by = ny + r;
+      if (bx < 0 || bx >= COLS || by >= TOTAL_ROWS) return true;
+      if (by >= 0 && board[by][bx] !== null) return true;
+    }
+  }
+  return false;
+}
+
+function resetLockDelayIfAllowed() {
+  if (gameMode === 'Classic') return;
+  if (isGrounded && lockResets < MAX_LOCK_RESETS) { lockTimer = 0; lockResets++; }
+}
+
+function moveHorizontal(dir) {
+  if (gameState !== 'PLAYING' || !activePiece) return false;
+  if (!checkCollision(activePiece.x + dir, activePiece.y, activePiece.rot)) {
+    activePiece.x += dir;
+    resetLockDelayIfAllowed();
+    sfx.move();
+    return true;
+  }
+  return false;
+}
+
+function rotatePiece(dir) {
+  if (gameState !== 'PLAYING' || !activePiece) return;
+  const oldRot = activePiece.rot;
+  const newRot = (oldRot + dir + 4) % 4;
+  const type = activePiece.type;
+
+  if (type === 'O') {
+    activePiece.rot = newRot;
+    resetLockDelayIfAllowed();
+    sfx.rotate();
+    return;
+  }
+
+  if (gameMode === 'Classic') {
+    if (!checkCollision(activePiece.x, activePiece.y, newRot)) {
+      activePiece.rot = newRot;
+      sfx.rotate();
+    }
+    return;
+  }
+
+  const key = `${oldRot}->${newRot}`;
+  const kickTable = (type === 'I') ? WALL_KICKS_I[key] : WALL_KICKS_JLSTZ[key];
+  for (const [dx, dy] of kickTable) {
+    if (!checkCollision(activePiece.x + dx, activePiece.y + dy, newRot)) {
+      activePiece.x += dx;
+      activePiece.y += dy;
+      activePiece.rot = newRot;
+      if (activePiece.y > activePiece.lowestY) { activePiece.lowestY = activePiece.y; lockResets = 0; }
+      resetLockDelayIfAllowed();
+      sfx.rotate();
+      return;
+    }
+  }
+}
+
+function getGhostY() {
+  if (!activePiece) return 0;
+  let gy = activePiece.y;
+  while (!checkCollision(activePiece.x, gy + 1, activePiece.rot)) gy++;
+  return gy;
+}
+
+function softDropStep() {
+  if (gameState !== 'PLAYING' || !activePiece) return false;
+  if (!checkCollision(activePiece.x, activePiece.y + 1, activePiece.rot)) {
+    activePiece.y++;
+    score += 1;
+    if (activePiece.y > activePiece.lowestY) { activePiece.lowestY = activePiece.y; lockResets = 0; lockTimer = 0; }
+    updateScoreUI();
+    sfx.soft();
+    return true;
+  }
+  return false;
+}
+
+function hardDrop() {
+  if (gameState !== 'PLAYING' || !activePiece || gameMode === 'Classic') return;
+  const ghostY = getGhostY();
+  score += Math.max(0, ghostY - activePiece.y) * 2;
+  activePiece.y = ghostY;
+  updateScoreUI();
+  lockActivePiece();
+}
+
+function holdCurrentPiece() {
+  if (gameState !== 'PLAYING' || !activePiece || !canHold || gameMode === 'Classic') return;
+  sfx.hold();
+  const currentType = activePiece.type;
+  if (holdPieceType === null) { holdPieceType = currentType; spawnNextPiece(); }
+  else { const swapType = holdPieceType; holdPieceType = currentType; spawnPiece(swapType); }
+  canHold = false;
+}
+
+function lockActivePiece() {
+  if (!activePiece) return;
+  const matrix = SHAPES[activePiece.type][activePiece.rot];
+  for (let r = 0; r < matrix.length; r++) {
+    for (let c = 0; c < matrix[r].length; c++) {
+      if (!matrix[r][c]) continue;
+      const bx = activePiece.x + c, by = activePiece.y + r;
+      if (by >= 0 && by < TOTAL_ROWS && bx >= 0 && bx < COLS) board[by][bx] = activePiece.type;
+    }
+  }
+  sfx.lock();
+  activePiece = null;
+
+  const fullRows = [];
+  for (let r = 0; r < TOTAL_ROWS; r++) {
+    if (board[r].every(cell => cell !== null)) fullRows.push(r);
+  }
+
+  if (fullRows.length > 0) {
+    clearingRows = fullRows;
+    clearAnimTimer = 0;
+    gameState = 'CLEARING';
+    sfx.clear(fullRows.length);
+  } else {
+    spawnNextPiece();
+  }
+}
+
+function finishLineClear() {
+  const count = clearingRows.length;
+  score += ([0, 100, 300, 500, 800][count] || 800) * level;
+  lines += count;
+  const newLevel = Math.floor(lines / 10) + 1;
+  if (newLevel > level) { level = newLevel; sfx.levelUp(); }
+
+  const remainingRows = board.filter((_, idx) => !clearingRows.includes(idx));
+  while (remainingRows.length < TOTAL_ROWS) remainingRows.unshift(Array(COLS).fill(null));
+  board = remainingRows;
+
+  clearingRows = [];
+  updateScoreUI();
+  gameState = 'PLAYING';
+  spawnNextPiece();
+}
+
+function getDropInterval(lvl) {
+  if (gameMode === 'Classic') return Math.max(55, Math.round(950 * Math.pow(0.81, lvl - 1)));
+  return Math.max(75, Math.round(1000 * Math.pow(0.84, lvl - 1)));
+}
+
+function updateScoreUI() {
+  saveHighScore();
+  document.getElementById('scoreVal').textContent = score.toLocaleString();
+  document.getElementById('levelVal').textContent = level;
+  document.getElementById('linesVal').textContent = lines;
+}
+
+function applyModeUIRules() {
+  const badge = document.getElementById('modeBadge');
+  const holdBox = document.getElementById('holdPanelBox');
+  const nextTitle = document.getElementById('nextPanelTitle');
+  const touchHold = document.getElementById('touchHoldBtn');
+  const touchHard = document.getElementById('touchHardDropBtn');
+
+  if (gameMode === 'Classic') {
+    badge.textContent = 'CLASSIC';
+    badge.classList.add('classic');
+    holdBox.classList.add('disabled-panel');
+    nextTitle.textContent = 'NEXT (1)';
+    touchHold.classList.add('disabled-btn');
+    touchHard.classList.add('disabled-btn');
+  } else {
+    badge.textContent = 'MODERN';
+    badge.classList.remove('classic');
+    holdBox.classList.remove('disabled-panel');
+    nextTitle.textContent = 'NEXT (3)';
+    touchHold.classList.remove('disabled-btn');
+    touchHard.classList.remove('disabled-btn');
+  }
+  loadSavedData();
+}
+
+function isLockedByMandatoryFeedback() { return gameState === 'GAMEOVER' && !feedbackSubmitted; }
+function updateTopBarLockState() {
+  const locked = isLockedByMandatoryFeedback();
+  document.getElementById('btnModeSwitch').disabled = locked;
+  document.getElementById('btnRestartTop').disabled = locked;
+  document.getElementById('btnPause').disabled = locked;
+}
+
+function startNewGame() {
+  if (isLockedByMandatoryFeedback()) return;
+  applyModeUIRules();
+  board = createEmptyBoard();
+  score = 0; lines = 0; level = 1;
+  holdPieceType = null; canHold = true;
+  clearingRows = []; dropAccumulator = 0; lockTimer = 0; lockResets = 0;
+  updateScoreUI();
+  initNextQueue();
+  gameState = 'PLAYING';
+  updateTopBarLockState();
+  spawnNextPiece();
+  document.getElementById('startOverlay').classList.add('hidden');
+  document.getElementById('pauseOverlay').classList.add('hidden');
+  document.getElementById('gameOverOverlay').classList.add('hidden');
+}
+
+function openStartMenu() {
+  if (isLockedByMandatoryFeedback()) return;
+  gameState = 'START';
+  updateTopBarLockState();
+  inputState.left = false; inputState.right = false; inputState.down = false; inputState.dasDir = 0;
+  document.getElementById('pauseOverlay').classList.add('hidden');
+  document.getElementById('gameOverOverlay').classList.add('hidden');
+  document.getElementById('startOverlay').classList.remove('hidden');
+}
+
+function togglePause() {
+  if (gameState === 'PLAYING') {
+    gameState = 'PAUSED';
+    inputState.left = false; inputState.right = false; inputState.down = false; inputState.dasDir = 0;
+    document.getElementById('pauseOverlay').classList.remove('hidden');
+  } else if (gameState === 'PAUSED') {
+    gameState = 'PLAYING';
+    document.getElementById('pauseOverlay').classList.add('hidden');
+  }
+}
+
+function triggerGameOver() {
+  gameState = 'GAMEOVER';
+  feedbackSubmitted = false;
+  sfx.gameOver();
+  saveHighScore();
+  updateTopBarLockState();
+
+  document.getElementById('finalMode').textContent = gameMode;
+  document.getElementById('finalScore').textContent = score.toLocaleString();
+  document.getElementById('finalLevel').textContent = level;
+  document.getElementById('finalLines').textContent = lines;
+
+  document.getElementById('playerNameInput').value = '';
+  document.getElementById('playerNameInput').disabled = false;
+  document.getElementById('feedbackInput').value = '';
+  document.getElementById('feedbackInput').disabled = false;
+
+  const btnSubmit = document.getElementById('btnSubmitFeedback');
+  btnSubmit.disabled = false;
+  btnSubmit.textContent = '📤 ส่งสถิติและ Feedback เพื่อปลดล็อก';
+
+  document.getElementById('btnPlayAgain').disabled = true;
+  document.getElementById('btnPlayAgain').textContent = '🔒 เล่นใหม่อีกครั้ง (ส่ง Feedback ก่อน)';
+  document.getElementById('btnBackToMenu').disabled = true;
+  document.getElementById('btnBackToMenu').textContent = '🔒 กลับหน้าเลือกโหมด (ส่ง Feedback ก่อน)';
+
+  document.getElementById('feedbackStatus').textContent = '';
+  document.getElementById('feedbackStatus').className = 'status-msg';
+  document.getElementById('gameOverOverlay').classList.remove('hidden');
+}
+
+function unlockPostFeedbackButtons() {
+  feedbackSubmitted = true;
+  updateTopBarLockState();
+  document.getElementById('playerNameInput').disabled = true;
+  document.getElementById('feedbackInput').disabled = true;
+
+  const btnAgain = document.getElementById('btnPlayAgain');
+  const btnMenu = document.getElementById('btnBackToMenu');
+  btnAgain.disabled = false;
+  btnAgain.textContent = '🔄 เล่นใหม่อีกครั้ง';
+  btnMenu.disabled = false;
+  btnMenu.textContent = '🎮 กลับหน้าเลือกโหมด';
+}
+
+const boardCanvas = document.getElementById('boardCanvas');
+const boardCtx = boardCanvas.getContext('2d');
+const holdCanvas = document.getElementById('holdCanvas');
+const holdCtx = holdCanvas.getContext('2d');
+const nextCanvas = document.getElementById('nextCanvas');
+const nextCtx = nextCanvas.getContext('2d');
+let cellSize = 30;
+
+function resizeCanvases() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = boardCanvas.getBoundingClientRect();
+  cellSize = rect.width / COLS;
+  boardCanvas.width = Math.round(rect.width * dpr);
+  boardCanvas.height = Math.round(rect.height * dpr);
+  boardCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const holdRect = holdCanvas.getBoundingClientRect();
+  holdCanvas.width = Math.round(holdRect.width * dpr);
+  holdCanvas.height = Math.round(holdRect.height * dpr);
+  holdCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const nextRect = nextCanvas.getBoundingClientRect();
+  nextCanvas.width = Math.round(nextRect.width * dpr);
+  nextCanvas.height = Math.round(nextRect.height * dpr);
+  nextCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+window.addEventListener('resize', resizeCanvases);
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  const radius = Math.min(r, w / 2, h / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + radius, y);
+  ctx.arcTo(x + w, y, x + w, y + h, radius);
+  ctx.arcTo(x + w, y + h, x, y + h, radius);
+  ctx.arcTo(x, y + h, x, y, radius);
+  ctx.arcTo(x, y, x + w, y, radius);
+  ctx.closePath();
+}
+
+function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) {
+  const palette = PIECE_COLORS[type];
+  if (!palette) return;
+  const pad = Math.max(1, size * 0.045);
+  const bx = px + pad, by = py + pad, bw = size - pad * 2, bh = size - pad * 2;
+  const radius = Math.max(3, size * 0.18);
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  if (isGlowing) { ctx.shadowColor = palette.glow; ctx.shadowBlur = size * 0.55; }
+  else { ctx.shadowColor = 'rgba(0, 0, 0, 0.35)'; ctx.shadowBlur = size * 0.14; ctx.shadowOffsetY = size * 0.06; }
+
+  const grad = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
+  grad.addColorStop(0, palette.light); grad.addColorStop(0.35, palette.base); grad.addColorStop(1, palette.dark);
+  roundRectPath(ctx, bx, by, bw, bh, radius);
+  ctx.fillStyle = grad; ctx.fill();
+
+  ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.38)';
+  ctx.lineWidth = Math.max(1, size * 0.055);
+  ctx.beginPath();
+  ctx.moveTo(bx + radius * 0.6, by + bh - radius * 0.6);
+  ctx.lineTo(bx + radius * 0.6, by + radius * 0.6);
+  ctx.lineTo(bx + bw - radius * 0.6, by + radius * 0.6);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawGhostBlock(ctx, px, py, size, type) {
+  const palette = PIECE_COLORS[type];
+  const pad = Math.max(2, size * 0.08);
+  const bx = px + pad, by = py + pad, bw = size - pad * 2, bh = size - pad * 2;
+  ctx.save();
+  roundRectPath(ctx, bx, by, bw, bh, Math.max(3, size * 0.16));
+  ctx.strokeStyle = palette.base; ctx.globalAlpha = 0.55; ctx.lineWidth = Math.max(1.5, size * 0.07);
+  ctx.stroke();
+  ctx.restore();
+}
+
+function renderBoard() {
+  const width = COLS * cellSize, height = VISIBLE_ROWS * cellSize;
+  const bgGrad = boardCtx.createLinearGradient(0, 0, 0, height);
+  bgGrad.addColorStop(0, '#262a35'); bgGrad.addColorStop(1, '#1e222b');
+  boardCtx.fillStyle = bgGrad; boardCtx.fillRect(0, 0, width, height);
+
+  for (let r = HIDDEN_ROWS; r < TOTAL_ROWS; r++) {
+    const isRowClearing = (gameState === 'CLEARING' && clearingRows.includes(r));
+    const visRow = r - HIDDEN_ROWS;
+    for (let c = 0; c < COLS; c++) {
+      const cellType = board[r][c];
+      if (!cellType) continue;
+      if (isRowClearing) {
+        drawWoodenBlock(boardCtx, c * cellSize, visRow * cellSize, cellSize, cellType, true, Math.max(0, 1 - clearAnimTimer / LINE_CLEAR_ANIM_MS));
+      } else {
+        drawWoodenBlock(boardCtx, c * cellSize, visRow * cellSize, cellSize, cellType, false, 1);
+      }
+    }
+  }
+
+  if (activePiece && gameState === 'PLAYING') {
+    const matrix = SHAPES[activePiece.type][activePiece.rot];
+    if (gameMode === 'Modern') {
+      const ghostY = getGhostY();
+      for (let r = 0; r < matrix.length; r++) {
+        for (let c = 0; c < matrix[r].length; c++) {
+          if (matrix[r][c] && ghostY + r - HIDDEN_ROWS >= 0) {
+            drawGhostBlock(boardCtx, (activePiece.x + c) * cellSize, (ghostY + r - HIDDEN_ROWS) * cellSize, cellSize, activePiece.type);
+          }
+        }
+      }
+    }
+    for (let r = 0; r < matrix.length; r++) {
+      for (let c = 0; c < matrix[r].length; c++) {
+        if (matrix[r][c] && activePiece.y + r - HIDDEN_ROWS >= 0) {
+          drawWoodenBlock(boardCtx, (activePiece.x + c) * cellSize, (activePiece.y + r - HIDDEN_ROWS) * cellSize, cellSize, activePiece.type, true, 1);
+        }
+      }
+    }
+  }
+}
+
+function drawMiniPiece(ctx, type, boxWidth, offsetY, boxHeight, alpha = 1) {
+  if (!type) return;
+  const matrix = SHAPES[type][0];
+  let minR = 4, maxR = -1, minC = 4, maxC = -1;
+  for (let r = 0; r < matrix.length; r++) {
+    for (let c = 0; c < matrix[r].length; c++) {
+      if (matrix[r][c]) { minR = Math.min(minR, r); maxR = Math.max(maxR, r); minC = Math.min(minC, c); maxC = Math.max(maxC, c); }
+    }
+  }
+  const mSize = Math.min(boxWidth / 4.4, boxHeight / 2.6);
+  const startX = (boxWidth - (maxC - minC + 1) * mSize) / 2;
+  const startY = offsetY + (boxHeight - (maxR - minR + 1) * mSize) / 2;
+  for (let r = minR; r <= maxR; r++) {
+    for (let c = minC; c <= maxC; c++) {
+      if (matrix[r][c]) {
+        drawWoodenBlock(ctx, startX + (c - minC) * mSize, startY + (r - minR) * mSize, mSize, type, false, alpha);
+      }
+    }
+  }
+}
+
+function renderSidePanels() {
+  const holdRect = holdCanvas.getBoundingClientRect();
+  holdCtx.clearRect(0, 0, holdRect.width, holdRect.height);
+  if (gameMode === 'Modern' && holdPieceType) drawMiniPiece(holdCtx, holdPieceType, holdRect.width, 0, holdRect.height, canHold ? 1 : 0.45);
+
+  const nextRect = nextCanvas.getBoundingClientRect();
+  nextCtx.clearRect(0, 0, nextRect.width, nextRect.height);
+  const slotH = nextRect.height / 3;
+  const previewCount = (gameMode === 'Classic') ? 1 : 3;
+  for (let i = 0; i < previewCount; i++) drawMiniPiece(nextCtx, nextQueue[i], nextRect.width, i * slotH, slotH, 1);
+}
+
+let lastFrameTime = performance.now();
+function gameLoop(now) {
+  const dt = Math.min(100, now - lastFrameTime);
+  lastFrameTime = now;
+
+  if (gameState === 'PLAYING' && activePiece) {
+    if (inputState.dasDir !== 0) {
+      inputState.dasTimer += dt;
+      if (inputState.dasTimer >= DAS_MS) {
+        inputState.arrTimer += dt;
+        while (inputState.arrTimer >= ARR_MS) { inputState.arrTimer -= ARR_MS; if (!moveHorizontal(inputState.dasDir)) break; }
+      }
+    }
+    if (inputState.down) {
+      inputState.softDropTimer += dt;
+      while (inputState.softDropTimer >= 45) { inputState.softDropTimer -= 45; softDropStep(); }
+    }
+    dropAccumulator += dt;
+    const dropInterval = getDropInterval(level);
+    while (dropAccumulator >= dropInterval) {
+      dropAccumulator -= dropInterval;
+      if (!checkCollision(activePiece.x, activePiece.y + 1, activePiece.rot)) {
+        activePiece.y++;
+        if (activePiece.y > activePiece.lowestY) { activePiece.lowestY = activePiece.y; lockResets = 0; lockTimer = 0; }
+      }
+    }
+    isGrounded = checkCollision(activePiece.x, activePiece.y + 1, activePiece.rot);
+    if (isGrounded) {
+      lockTimer += dt;
+      if (lockTimer >= (gameMode === 'Classic' ? LOCK_DELAY_CLASSIC_MS : LOCK_DELAY_MODERN_MS)) lockActivePiece();
+    } else { lockTimer = 0; }
+  } else if (gameState === 'CLEARING') {
+    clearAnimTimer += dt;
+    if (clearAnimTimer >= LINE_CLEAR_ANIM_MS) finishLineClear();
+  }
+
+  renderBoard();
+  renderSidePanels();
+  requestAnimationFrame(gameLoop);
+}
+
+window.addEventListener('keydown', (e) => {
+  const tag = document.activeElement ? document.activeElement.tagName : '';
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Space'].includes(e.code)) e.preventDefault();
+  if (e.repeat) return;
+
+  if (e.code === 'KeyP' || e.code === 'Escape') { togglePause(); return; }
+  if (e.code === 'KeyR') {
+    if (isLockedByMandatoryFeedback()) return;
+    if (['PLAYING', 'PAUSED', 'GAMEOVER'].includes(gameState)) startNewGame();
+    return;
+  }
+  if (gameState !== 'PLAYING') return;
+
+  switch (e.code) {
+    case 'ArrowLeft': inputState.left = true; inputState.dasDir = -1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(-1); break;
+    case 'ArrowRight': inputState.right = true; inputState.dasDir = 1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(1); break;
+    case 'ArrowDown': inputState.down = true; inputState.softDropTimer = 0; softDropStep(); break;
+    case 'ArrowUp':
+    case 'KeyX': rotatePiece(1); break;
+    case 'KeyZ': rotatePiece(-1); break;
+    case 'Space': hardDrop(); break;
+    case 'KeyC':
+    case 'ShiftLeft':
+    case 'ShiftRight': holdCurrentPiece(); break;
+  }
+});
+
+window.addEventListener('keyup', (e) => {
+  if (e.code === 'ArrowLeft') { inputState.left = false; inputState.dasDir = inputState.right ? 1 : 0; inputState.dasTimer = 0; }
+  if (e.code === 'ArrowRight') { inputState.right = false; inputState.dasDir = inputState.left ? -1 : 0; inputState.dasTimer = 0; }
+  if (e.code === 'ArrowDown') inputState.down = false;
+});
+
+// รองรับ Touch Events สำหรับมือถือและแท็บเล็ตอย่างไร้รอยต่อ
+document.querySelectorAll('.touch-btn').forEach(btn => {
+  const action = btn.getAttribute('data-action');
+  const startAction = (e) => {
+    e.preventDefault();
+    if (gameState !== 'PLAYING') return;
+    if (action === 'left') { inputState.dasDir = -1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(-1); }
+    else if (action === 'right') { inputState.dasDir = 1; inputState.dasTimer = 0; inputState.arrTimer = 0; moveHorizontal(1); }
+    else if (action === 'softDrop') { inputState.down = true; inputState.softDropTimer = 0; softDropStep(); }
+    else if (action === 'rotCW') rotatePiece(1);
+    else if (action === 'rotCCW') rotatePiece(-1);
+    else if (action === 'hardDrop') hardDrop();
+    else if (action === 'hold') holdCurrentPiece();
+  };
+  const endAction = (e) => {
+    e.preventDefault();
+    if (action === 'left' || action === 'right') inputState.dasDir = 0;
+    else if (action === 'softDrop') inputState.down = false;
+  };
+  btn.addEventListener('pointerdown', startAction);
+  btn.addEventListener('pointerup', endAction);
+  btn.addEventListener('pointerleave', endAction);
+  btn.addEventListener('pointercancel', endAction);
+});
+
+const modeCards = document.querySelectorAll('.mode-card');
+modeCards.forEach(card => {
+  card.addEventListener('click', () => {
+    gameMode = card.getAttribute('data-mode');
+    modeCards.forEach(c => c.classList.toggle('active', c === card));
+    applyModeUIRules();
+  });
+});
+
+const starBtns = document.querySelectorAll('.star-btn');
+starBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    if (feedbackSubmitted) return;
+    selectedRating = parseInt(btn.getAttribute('data-star'), 10);
+    starBtns.forEach(b => b.classList.toggle('active', parseInt(b.getAttribute('data-star'), 10) <= selectedRating));
+  });
+});
+
+document.getElementById('btnSubmitFeedback').addEventListener('click', async () => {
+  if (feedbackSubmitted) return;
+  const scriptUrl = getScriptUrl();
+  const statusEl = document.getElementById('feedbackStatus');
+  const feedbackText = document.getElementById('feedbackInput').value.trim();
+
+  if (!feedbackText) {
+    statusEl.textContent = '⚠️ กรุณาพิมพ์ Feedback ก่อนส่ง';
+    statusEl.className = 'status-msg err';
+    document.getElementById('feedbackInput').focus();
+    return;
+  }
+  if (!scriptUrl) {
+    statusEl.textContent = '⚠️ กรุณาตั้งค่า Google Apps Script URL ที่ปุ่ม ⚙️ ก่อนครับ';
+    statusEl.className = 'status-msg err';
+    return;
+  }
+
+  const playerName = resolvePlayerName(document.getElementById('playerNameInput').value);
+  const btnSubmit = document.getElementById('btnSubmitFeedback');
+  btnSubmit.disabled = true;
+  btnSubmit.textContent = '⏳ กำลังบันทึกข้อมูล...';
+  statusEl.textContent = `กำลังส่งข้อมูล (${playerName})...`;
+  statusEl.className = 'status-msg wait';
+
+  try {
+    await fetch(scriptUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ playerName, gameMode, score, level, linesCleared: lines, rating: selectedRating, feedback: feedbackText })
+    });
+    btnSubmit.textContent = '✅ บันทึกสำเร็จ';
+    statusEl.textContent = 'บันทึกเรียบร้อย! ปลดล็อกปุ่มเล่นใหม่แล้ว';
+    statusEl.className = 'status-msg ok';
+    unlockPostFeedbackButtons();
+  } catch (err) {
+    btnSubmit.disabled = false;
+    btnSubmit.textContent = '📤 ส่งสถิติและ Feedback เพื่อปลดล็อก';
+    statusEl.textContent = 'เกิดข้อผิดพลาดในการเชื่อมต่อ';
+    statusEl.className = 'status-msg err';
+  }
+});
+
+document.getElementById('btnStartGame').addEventListener('click', () => { sfx.init(); startNewGame(); });
+document.getElementById('btnResumeGame').addEventListener('click', () => togglePause());
+document.getElementById('btnRestartFromPause').addEventListener('click', () => startNewGame());
+document.getElementById('btnChangeModeFromPause').addEventListener('click', () => openStartMenu());
+document.getElementById('btnPlayAgain').addEventListener('click', () => startNewGame());
+document.getElementById('btnBackToMenu').addEventListener('click', () => openStartMenu());
+document.getElementById('btnModeSwitch').addEventListener('click', () => openStartMenu());
+document.getElementById('btnPause').addEventListener('click', () => togglePause());
+document.getElementById('btnRestartTop').addEventListener('click', () => startNewGame());
+
+document.getElementById('btnSound').addEventListener('click', (e) => {
+  sfx.enabled = !sfx.enabled;
+  e.currentTarget.textContent = sfx.enabled ? '🔊 เสียง' : '🔇 ปิดเสียง';
+});
+
+document.getElementById('btnConfig').addEventListener('click', () => {
+  document.getElementById('scriptUrlInput').value = getScriptUrl();
+  document.getElementById('configOverlay').classList.remove('hidden');
+});
+
+document.getElementById('btnSaveConfig').addEventListener('click', () => {
+  try { localStorage.setItem('tetris_google_script_url', document.getElementById('scriptUrlInput').value.trim()); } catch (e) {}
+  document.getElementById('configOverlay').classList.add('hidden');
+});
+
+document.getElementById('btnCloseConfig').addEventListener('click', () => {
+  document.getElementById('configOverlay').classList.add('hidden');
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  applyModeUIRules();
+  board = createEmptyBoard();
+  initNextQueue();
+  resizeCanvases();
+  requestAnimationFrame(gameLoop);
+});
+</script>
+</body>
+</html>
