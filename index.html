@@ -747,25 +747,136 @@
     contain: layout paint;
   }
 
+  /* Global Touch & Gesture Safety for Mobile & Tablet */
+  html, body {
+    touch-action: none;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+
   /* Block Blast Mode Layout Overrides */
   body.mode-block-blast #holdPanelBox,
   body.mode-block-blast #levelPanelBox,
-  body.mode-block-blast #rightPanel {
+  body.mode-block-blast #linesPanelBox,
+  body.mode-block-blast #rightPanel,
+  body.mode-block-blast #mobileControls {
     display: none !important;
-  }
-  body.mode-block-blast .side-panel {
-    width: 80px;
-  }
-  body.mode-block-blast .center-play-area {
-    width: 100%;
-  }
-  body.mode-block-blast .board-container {
-    aspect-ratio: 1 / 1 !important;
-    height: auto !important;
-    max-height: 72% !important;
   }
   body.mode-block-blast #blockBlastDock {
     display: flex !important;
+  }
+  body.mode-block-blast .board-container {
+    aspect-ratio: 1 / 1 !important;
+    max-width: 100% !important;
+  }
+
+  /* Mobile Portrait Layout for Block Blast (<= 600px) - สมมาตร จัดวางกลางจอ พร้อมสถิติแถวบน */
+  @media (max-width: 600px) {
+    body.mode-block-blast .stage-area {
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 6px !important;
+      width: 100% !important;
+      padding: 0 !important;
+    }
+    body.mode-block-blast #leftPanel {
+      flex-direction: row !important;
+      width: 100% !important;
+      max-width: min(92vw, 360px) !important;
+      justify-content: space-between !important;
+      gap: 6px !important;
+      margin-bottom: 2px !important;
+    }
+    body.mode-block-blast #leftPanel .panel-box {
+      flex: 1 !important;
+      text-align: center !important;
+      padding: 3px 6px !important;
+    }
+    body.mode-block-blast .center-play-area {
+      width: 100% !important;
+      max-width: 100% !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: center !important;
+    }
+    body.mode-block-blast .board-container {
+      width: min(88vw, 44vh, 350px) !important;
+      height: min(88vw, 44vh, 350px) !important;
+      margin: 0 auto !important;
+    }
+    body.mode-block-blast #blockBlastDock {
+      width: min(92vw, 360px) !important;
+      max-width: 360px !important;
+      height: 76px !important;
+      padding: 4px 6px !important;
+      gap: 8px !important;
+      margin-top: 6px !important;
+    }
+  }
+
+  /* Tablet Layout for Block Blast (601px - 1024px) */
+  @media (min-width: 601px) and (max-width: 1024px) {
+    body.mode-block-blast .stage-area {
+      flex-direction: column !important;
+      align-items: center !important;
+      justify-content: flex-start !important;
+      gap: 8px !important;
+      width: 100% !important;
+    }
+    body.mode-block-blast #leftPanel {
+      flex-direction: row !important;
+      width: 100% !important;
+      max-width: 480px !important;
+      justify-content: space-between !important;
+      gap: 12px !important;
+    }
+    body.mode-block-blast #leftPanel .panel-box {
+      flex: 1 !important;
+      text-align: center !important;
+      padding: 6px 12px !important;
+    }
+    body.mode-block-blast .center-play-area {
+      width: 100% !important;
+      max-width: 500px !important;
+      display: flex !important;
+      flex-direction: column !important;
+      align-items: center !important;
+    }
+    body.mode-block-blast .board-container {
+      width: min(82vw, 54vh, 460px) !important;
+      height: min(82vw, 54vh, 460px) !important;
+    }
+    body.mode-block-blast #blockBlastDock {
+      width: min(86vw, 460px) !important;
+      max-width: 460px !important;
+      height: 92px !important;
+      margin-top: 8px !important;
+    }
+  }
+
+  /* Desktop Layout for Block Blast (>= 1025px) */
+  @media (min-width: 1025px) {
+    body.mode-block-blast #leftPanel {
+      width: 110px !important;
+      gap: 10px !important;
+    }
+    body.mode-block-blast .center-play-area {
+      width: 100% !important;
+      max-width: 520px !important;
+    }
+    body.mode-block-blast .board-container {
+      width: min(75vw, 66vh, 480px) !important;
+      height: min(75vw, 66vh, 480px) !important;
+    }
+    body.mode-block-blast #blockBlastDock {
+      width: 100% !important;
+      max-width: 480px !important;
+      height: 96px !important;
+    }
   }
 
   /* ป้ายเวลาในแถบบน (Timer Badge) - แสดงเฉพาะโหมดจับเวลา (Sprint & Ultra) */
@@ -2361,6 +2472,8 @@
   function setupBlockBlastDragHandlers() {
     let startX = 0, startY = 0;
     const dragCanvas = document.getElementById('bbDragCanvas');
+    let bbActiveTouchId = null;
+    let lastDragEndTime = 0;
 
     function renderPieceOnDragCanvas(piece) {
       if (!dragCanvas || !piece) return;
@@ -2380,7 +2493,6 @@
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, pieceW, pieceH);
 
-      // วาดเงาใต้บล็อกนุ่มนวลแบบ GPU-friendly
       ctx.save();
       ctx.shadowColor = 'rgba(0, 0, 0, 0.40)';
       ctx.shadowBlur = 10;
@@ -2393,6 +2505,38 @@
         }
       }
       ctx.restore();
+    }
+
+    // คำนวณพิกัดมุมซ้ายบนของชิ้นส่วนลอย พร้อม Clamp ให้อยู่ในหน้าจอโทรศัพท์/แท็บเล็ตเสมอ
+    function getDragTopLeft(clientX, clientY, pieceW, pieceH, isTouch) {
+      let dragLeft = clientX - pieceW / 2;
+      let dragTop = isTouch ? (clientY - pieceH - Math.max(26, (cellSize || 30) * 0.85)) : (clientY - pieceH / 2);
+
+      const minX = 4;
+      const maxX = Math.max(minX, (window.innerWidth || 360) - pieceW - 4);
+      dragLeft = Math.max(minX, Math.min(maxX, dragLeft));
+
+      const minY = 6;
+      const maxY = Math.max(minY, (window.innerHeight || 600) - pieceH - 6);
+      dragTop = Math.max(minY, Math.min(maxY, dragTop));
+
+      return { dragLeft, dragTop };
+    }
+
+    function cancelDrag() {
+      if (dragCanvas) dragCanvas.style.display = 'none';
+      if (bbDragSlot !== -1) {
+        const slotEl = document.querySelector(`.bb-dock-slot[data-slot="${bbDragSlot}"]`);
+        if (slotEl) {
+          slotEl.classList.remove('dragging-source');
+          slotEl.style.transform = '';
+        }
+      }
+      isDraggingBB = false;
+      bbHoverPos = null;
+      bbDragSlot = -1;
+      dragNeedsUpdate = false;
+      bbActiveTouchId = null;
     }
 
     function startDrag(slotIdx, clientX, clientY, isTouch = false) {
@@ -2423,8 +2567,7 @@
       const mat = piece.matrix;
       const pieceW = mat[0].length * cellSize;
       const pieceH = mat.length * cellSize;
-      const dragLeft = clientX - pieceW / 2;
-      const dragTop = isTouch ? (clientY - pieceH - Math.max(30, cellSize * 0.9)) : (clientY - pieceH / 2);
+      const { dragLeft, dragTop } = getDragTopLeft(clientX, clientY, pieceW, pieceH, isTouch);
 
       if (dragCanvas) {
         dragCanvas.style.display = 'block';
@@ -2455,13 +2598,14 @@
 
       const dist = Math.hypot(clientX - startX, clientY - startY);
 
-      if (dist < 10) {
+      if (dist < 12) {
         // แตะ/คลิกเพื่อเลือกชิ้นส่วน (Tap-to-select)
         bbSelectedSlot = (bbSelectedSlot === slotIdx ? null : slotIdx);
         renderBlockBlastDock();
       } else if (bbHoverPos && bbPieces[slotIdx]) {
-        // วางลงตำแหน่งบนกระดานสำเร็จ (ตำแหน่งตรง 100% พร้อมแอนิเมชันเด้งลงล็อก)
+        // วางลงตำแหน่งบนกระดานสำเร็จ
         executeBlockBlastPlacement(slotIdx, bbHoverPos.row, bbHoverPos.col);
+        if (navigator.vibrate) navigator.vibrate(12);
       } else {
         audioMgr.playMove();
       }
@@ -2470,14 +2614,19 @@
       bbHoverPos = null;
       bbDragSlot = -1;
       dragNeedsUpdate = false;
+      bbActiveTouchId = null;
+      lastDragEndTime = Date.now();
     }
 
     document.querySelectorAll('.bb-dock-slot').forEach(slot => {
       const idx = parseInt(slot.getAttribute('data-slot'), 10);
       slot.addEventListener('touchstart', (e) => {
-        const t = e.changedTouches[0];
-        if (t) {
-          startDrag(idx, t.clientX, t.clientY, true);
+        if (e.changedTouches && e.changedTouches[0]) {
+          const t = e.changedTouches[0];
+          if (bbActiveTouchId === null) {
+            bbActiveTouchId = t.identifier;
+            startDrag(idx, t.clientX, t.clientY, true);
+          }
           if (e.cancelable) e.preventDefault();
         }
       }, { passive: false });
@@ -2488,8 +2637,14 @@
     });
 
     window.addEventListener('touchmove', (e) => {
-      if (isDraggingBB && e.changedTouches[0]) {
-        moveDrag(e.changedTouches[0].clientX, e.changedTouches[0].clientY, true);
+      if (isDraggingBB && bbActiveTouchId !== null) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          if (t.identifier === bbActiveTouchId) {
+            moveDrag(t.clientX, t.clientY, true);
+            break;
+          }
+        }
         if (e.cancelable) e.preventDefault();
       }
     }, { passive: false });
@@ -2498,8 +2653,8 @@
       if (isDraggingBB) {
         moveDrag(e.clientX, e.clientY, false);
       } else if (bbSelectedSlot !== null && bbPieces[bbSelectedSlot] && !bbPieces[bbSelectedSlot].used) {
-        // พรีวิวตามเมาส์สำหรับระบบ Tap-to-place
-        const rect = boardCanvas.getBoundingClientRect();
+        if (!cachedBoardRect) cachedBoardRect = boardCanvas.getBoundingClientRect();
+        const rect = cachedBoardRect;
         const mat = bbPieces[bbSelectedSlot].matrix;
         const pieceW = mat[0].length * cellSize;
         const pieceH = mat.length * cellSize;
@@ -2519,11 +2674,23 @@
     });
 
     window.addEventListener('touchend', (e) => {
-      if (isDraggingBB) {
-        const t = e.changedTouches ? e.changedTouches[0] : null;
-        endDrag(t ? t.clientX : startX, t ? t.clientY : startY);
+      if (isDraggingBB && bbActiveTouchId !== null) {
+        for (let i = 0; i < e.changedTouches.length; i++) {
+          const t = e.changedTouches[i];
+          if (t.identifier === bbActiveTouchId) {
+            endDrag(t.clientX, t.clientY);
+            break;
+          }
+        }
+        if (e.cancelable) e.preventDefault();
       }
-    });
+    }, { passive: false });
+
+    window.addEventListener('touchcancel', (e) => {
+      if (isDraggingBB) {
+        cancelDrag();
+      }
+    }, { passive: false });
 
     window.addEventListener('mouseup', (e) => {
       if (isDraggingBB) {
@@ -2532,8 +2699,10 @@
     });
 
     boardCanvas.addEventListener('click', (e) => {
+      if (Date.now() - lastDragEndTime < 350) return; // ป้องกัน Ghost click หลังจากลากปล่อยบนมือถือ
       if (gameMode !== 'BlockBlast' || bbSelectedSlot === null || !bbPieces[bbSelectedSlot] || bbPieces[bbSelectedSlot].used) return;
-      const rect = boardCanvas.getBoundingClientRect();
+      if (!cachedBoardRect) cachedBoardRect = boardCanvas.getBoundingClientRect();
+      const rect = cachedBoardRect;
       const mat = bbPieces[bbSelectedSlot].matrix;
       const pieceW = mat[0].length * cellSize;
       const pieceH = mat.length * cellSize;
@@ -2546,6 +2715,7 @@
       const row = Math.round(relTop / cellSize);
       if (canShapeFitAt(mat, row, col)) {
         executeBlockBlastPlacement(bbSelectedSlot, row, col);
+        if (navigator.vibrate) navigator.vibrate(12);
       }
     });
   }
@@ -4405,7 +4575,18 @@ function spawnRowParticles(fullRowIndices) {
     nextCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  window.addEventListener('resize', resizeCanvases);
+  window.addEventListener('resize', () => {
+    cachedBoardRect = null;
+    resizeCanvases();
+  });
+
+  window.addEventListener('orientationchange', () => {
+    cachedBoardRect = null;
+    setTimeout(() => {
+      resizeCanvases();
+      if (gameMode === 'BlockBlast') renderBlockBlastDock();
+    }, 180);
+  });
 
   function roundRectPath(ctx, x, y, w, h, r) {
     if (w <= 0 || h <= 0) return;
