@@ -675,45 +675,76 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 8px;
+    gap: 10px;
     width: 100%;
-    max-width: 440px;
-    height: 84px;
+    max-width: 480px;
+    height: 96px;
     flex-shrink: 0;
-    padding: 6px;
-    background: rgba(0, 0, 0, 0.35);
-    border: 1px solid var(--border-soft);
-    border-radius: 12px;
+    padding: 8px 12px;
+    background: rgba(18, 22, 34, 0.82);
+    backdrop-filter: blur(14px);
+    border: 1.5px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.50), inset 0 1px 1px rgba(255, 255, 255, 0.15);
     box-sizing: border-box;
+    margin-top: 10px;
   }
 
   .bb-dock-slot {
     flex: 1;
     height: 100%;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1.5px dashed var(--border-soft);
-    border-radius: 9px;
+    background: rgba(255, 255, 255, 0.038);
+    border: 1.5px solid rgba(255, 255, 255, 0.10);
+    border-radius: 13px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: grab;
-    transition: transform 0.15s, border-color 0.15s, background 0.15s;
+    transition: transform 0.18s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.18s, background 0.18s, box-shadow 0.18s, opacity 0.18s;
     touch-action: none;
     box-sizing: border-box;
+    position: relative;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .bb-dock-slot:hover {
+    background: rgba(255, 255, 255, 0.075);
+    border-color: rgba(255, 255, 255, 0.28);
+    transform: translateY(-2px);
   }
   .bb-dock-slot:active {
     cursor: grabbing;
-    transform: scale(0.96);
+    transform: scale(0.95);
+  }
+  .bb-dock-slot.dragging-source {
+    opacity: 0.30 !important;
+    border-style: dashed !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
+    transform: scale(0.95) !important;
   }
   .bb-dock-slot.empty {
-    opacity: 0.15;
+    opacity: 0.12;
     pointer-events: none;
     border-style: solid;
+    background: transparent;
   }
   .bb-dock-canvas {
     display: block;
-    max-width: 90%;
-    max-height: 90%;
+    max-width: 100%;
+    max-height: 100%;
+    pointer-events: none;
+  }
+
+  /* Floating Drag Canvas ลอยติดตามนิ้ว/เมาส์ทั่วจอแบบ 60-120fps ลื่นไหล 0ms lag */
+  .bb-drag-canvas {
+    position: fixed;
+    pointer-events: none;
+    z-index: 99999;
+    display: none;
+    will-change: transform;
+    top: 0;
+    left: 0;
+    contain: layout paint;
   }
 
   /* Block Blast Mode Layout Overrides */
@@ -737,7 +768,10 @@
     display: flex !important;
   }
 
-  /* ป้ายเวลาในแถบบน (Timer Badge) */
+  /* ป้ายเวลาในแถบบน (Timer Badge) - แสดงเฉพาะโหมดจับเวลา (Sprint & Ultra) */
+  .hidden {
+    display: none !important;
+  }
   .timer-badge {
     background: rgba(0, 0, 0, 0.45);
     border: 1px solid var(--accent);
@@ -750,6 +784,9 @@
     letter-spacing: 0.5px;
     margin-left: 6px;
     display: inline-block;
+  }
+  .timer-badge.hidden {
+    display: none !important;
   }
 
   /* ปุ่มเลือกธีมในหน้าต่างตั้งค่า */
@@ -1247,6 +1284,116 @@
       padding: 5px;
     }
   }
+
+  /* ========================================================
+     กฎการแสดงผลเฉพาะโหมด Block Blast และโหมดทั่วไป
+     ======================================================== */
+  body.mode-block-blast #holdPanelBox,
+  body.mode-block-blast #levelPanelBox,
+  body.mode-block-blast #linesPanelBox,
+  body.mode-block-blast #rightPanel,
+  body.mode-block-blast #mobileControls {
+    display: none !important;
+  }
+  body.mode-block-blast #leftPanel {
+    width: 90px !important;
+    gap: 8px !important;
+  }
+  body.mode-block-blast #blockBlastDock {
+    display: flex !important;
+  }
+  body.mode-block-blast .center-play-area {
+    width: 100% !important;
+    max-width: 520px !important;
+  }
+  body.mode-block-blast .board-container {
+    aspect-ratio: 1 / 1 !important;
+    width: min(84vw, 68vh, 480px) !important;
+    height: min(84vw, 68vh, 480px) !important;
+    max-width: 100% !important;
+    max-height: calc(100dvh - 160px) !important;
+  }
+
+  /* ซ่อน Dock 3 ชิ้นในโหมดอื่น (Classic, Modern, Sprint, Ultra) */
+  body:not(.mode-block-blast) #blockBlastDock {
+    display: none !important;
+  }
+
+  /* ไฮไลต์ชิ้นส่วนที่เลือกใน Block Blast สำหรับ Tap-to-Place */
+  .bb-dock-slot.selected {
+    border-color: #38bdf8 !important;
+    background: rgba(56, 189, 248, 0.22) !important;
+    box-shadow: 0 0 16px rgba(56, 189, 248, 0.55), inset 0 0 8px rgba(56, 189, 248, 0.4) !important;
+    transform: scale(1.04) !important;
+  }
+
+  /* ขยายขนาดแผงข้าง HOLD, NEXT และสถิติบนหน้าจอคอมพิวเตอร์ (Desktop >= 900px) */
+  @media (min-width: 900px) {
+    .app-wrapper {
+      max-width: 1150px !important;
+      padding: 12px 24px !important;
+    }
+    .stage-area {
+      gap: 20px !important;
+    }
+    body:not(.mode-block-blast) .side-panel {
+      width: 150px !important;
+      gap: 10px !important;
+    }
+    body:not(.mode-block-blast) .panel-box {
+      padding: 10px 12px !important;
+      border-radius: 12px !important;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.3) !important;
+    }
+    body:not(.mode-block-blast) .panel-title {
+      font-size: 0.78rem !important;
+      letter-spacing: 0.8px !important;
+      margin-bottom: 4px !important;
+    }
+    body:not(.mode-block-blast) .panel-value {
+      font-size: 1.55rem !important;
+      font-weight: 900 !important;
+    }
+    body:not(.mode-block-blast) .mini-canvas {
+      width: 110px !important;
+      height: 80px !important;
+    }
+    body:not(.mode-block-blast) .mini-canvas.next-canvas {
+      height: 230px !important;
+    }
+  }
+
+  /* ขนาดแผงข้างบนแท็บเล็ตและไอแพด (Tablet 601px - 899px) */
+  @media (min-width: 601px) and (max-width: 899px) {
+    .app-wrapper {
+      max-width: 860px !important;
+      padding: 8px 14px !important;
+    }
+    .stage-area {
+      gap: 12px !important;
+    }
+    body:not(.mode-block-blast) .side-panel {
+      width: 110px !important;
+      gap: 6px !important;
+    }
+    body:not(.mode-block-blast) .panel-box {
+      padding: 6px 8px !important;
+      border-radius: 10px !important;
+    }
+    body:not(.mode-block-blast) .panel-title {
+      font-size: 0.65rem !important;
+    }
+    body:not(.mode-block-blast) .panel-value {
+      font-size: 1.15rem !important;
+    }
+    body:not(.mode-block-blast) .mini-canvas {
+      width: 85px !important;
+      height: 60px !important;
+    }
+    body:not(.mode-block-blast) .mini-canvas.next-canvas {
+      height: 160px !important;
+    }
+  }
 </style>
 </head>
 <body>
@@ -1275,24 +1422,24 @@
   <!-- พื้นที่เล่นเกม -->
   <main class="stage-area">
     <!-- แผงซ้าย: Hold & สถิติ -->
-    <aside class="side-panel">
+    <aside class="side-panel" id="leftPanel">
       <div id="holdPanelBox" class="panel-box">
         <div class="panel-title">HOLD (C)</div>
         <canvas id="holdCanvas" class="mini-canvas"></canvas>
       </div>
-      <div class="panel-box">
+      <div class="panel-box" id="scorePanelBox">
         <div class="panel-title">SCORE</div>
         <div id="scoreVal" class="panel-value highlight">0</div>
       </div>
-      <div class="panel-box">
+      <div class="panel-box" id="bestPanelBox">
         <div class="panel-title">BEST</div>
         <div id="highScoreVal" class="panel-value">0</div>
       </div>
-      <div class="panel-box">
+      <div class="panel-box" id="levelPanelBox">
         <div class="panel-title">LEVEL</div>
         <div id="levelVal" class="panel-value">1</div>
       </div>
-      <div class="panel-box">
+      <div class="panel-box" id="linesPanelBox">
         <div class="panel-title">LINES</div>
         <div id="linesVal" class="panel-value">0</div>
       </div>
@@ -1313,11 +1460,13 @@
         <div class="bb-dock-slot" data-slot="1"><canvas id="bbDockCanvas1" class="bb-dock-canvas"></canvas></div>
         <div class="bb-dock-slot" data-slot="2"><canvas id="bbDockCanvas2" class="bb-dock-canvas"></canvas></div>
       </div>
+      <!-- Floating Drag Canvas สำหรับลากบล็อกทั่วจอแบบสมูท 60fps ไม่จำกัดขอบกระดาน -->
+      <canvas id="bbDragCanvas" class="bb-drag-canvas"></canvas>
     </div>
 
     <!-- แผงขวา: Next Queue -->
-    <aside class="side-panel">
-      <div class="panel-box">
+    <aside class="side-panel" id="rightPanel">
+      <div class="panel-box" id="nextPanelBox">
         <div id="nextPanelTitle" class="panel-title">NEXT (3)</div>
         <canvas id="nextCanvas" class="mini-canvas next-canvas"></canvas>
       </div>
@@ -1377,7 +1526,6 @@
     <button id="btnResumeGame" class="btn-primary">▶ เล่นต่อ (Resume)</button>
     <button id="btnSettingsFromPause" class="btn-secondary">⚙️ ตั้งค่าเสียง & เอฟเฟกต์</button>
     <button id="btnRestartFromPause" class="btn-secondary">🔄 เริ่มเกมใหม่ (โหมดเดิม)</button>
-    <button id="btnChangeModeFromPause" class="btn-secondary">🎮 เปลี่ยนโหมดการเล่น</button>
   </div>
 </div>
 
@@ -1624,8 +1772,7 @@
   const HIDDEN_ROWS = 2;
   const TOTAL_ROWS = VISIBLE_ROWS + HIDDEN_ROWS;
 
-  
-  // ==========================================
+// ==========================================
   // ระบบโหมดลากวางบล็อก 3 ชิ้น (Block Blast Mode Engine)
   // ==========================================
   const BLOCK_BLAST_SHAPES = [
@@ -1656,8 +1803,15 @@
   let bbPieces = [];
   let isDraggingBB = false;
   let bbDragSlot = -1;
-  let bbDragPos = { x: 0, y: 0 };
   let bbHoverPos = null;
+  let bbSelectedSlot = null;
+  let bbLineClearEffects = [];
+  let bbPlacedAnim = null; // { cells: [{r, c}], timer: 140, maxTimer: 140 }
+
+  // ตัวแปรสำหรับ RAF Dragging (Decoupled 60/120fps Drag Movement)
+  let dragTargetX = 0, dragTargetY = 0, dragIsTouch = false;
+  let dragNeedsUpdate = false;
+  let cachedBoardRect = null;
 
   function canShapeFitAt(matrix, rStart, cStart) {
     const sRows = matrix.length;
@@ -1684,12 +1838,35 @@
     return false;
   }
 
+  function getPotentialClears(mat, targetRow, targetCol) {
+    const tempBoard = bbBoard.map(row => [...row]);
+    for (let r = 0; r < mat.length; r++) {
+      for (let c = 0; c < mat[0].length; c++) {
+        if (mat[r][c]) {
+          tempBoard[targetRow + r][targetCol + c] = '#fff';
+        }
+      }
+    }
+    const fullRows = [];
+    for (let r = 0; r < 10; r++) {
+      if (tempBoard[r].every(c => c !== null)) fullRows.push(r);
+    }
+    const fullCols = [];
+    for (let c = 0; c < 10; c++) {
+      let colFull = true;
+      for (let r = 0; r < 10; r++) {
+        if (tempBoard[r][c] === null) { colFull = false; break; }
+      }
+      if (colFull) fullCols.push(c);
+    }
+    return { fullRows, fullCols };
+  }
+
   // ระบบสุ่มอัจฉริยะ (Smart Spawning: ตรวจสอบกระดานเสมอ การันตีสุ่มชิ้นที่วางลงได้)
   function generateSmartBlockBlastPieces() {
     const colors = ['#e8334a', '#38bdf8', '#ffd700', '#10b981', '#ec4899', '#f97316', '#a855f7'];
     const validShapes = BLOCK_BLAST_SHAPES.filter(s => canShapeFitAnywhere(s.matrix));
 
-    // นับจำนวนช่องว่าง
     let emptyCount = 0;
     for (let r = 0; r < 10; r++) {
       for (let c = 0; c < 10; c++) {
@@ -1700,14 +1877,17 @@
     const pieces = [];
     for (let i = 0; i < 3; i++) {
       let shape;
-      // การันตีอย่างน้อย 2 ชิ้นแรกต้องสามารถวางลงได้เสมอ (หรือถ้ากระดานแน่นมาก สุ่มชิ้นเล็กช่วยชีวิต)
-      if (validShapes.length > 0 && (i < 2 || Math.random() < 0.75)) {
-        if (emptyCount < 35) {
+      if (validShapes.length > 0) {
+        if (emptyCount < 45) {
           const smallValid = validShapes.filter(s => s.matrix.length <= 2 && s.matrix[0].length <= 2);
           const pool = smallValid.length > 0 ? smallValid : validShapes;
           shape = pool[Math.floor(Math.random() * pool.length)];
         } else {
-          shape = validShapes[Math.floor(Math.random() * validShapes.length)];
+          if (i < 2 || Math.random() < 0.85) {
+            shape = validShapes[Math.floor(Math.random() * validShapes.length)];
+          } else {
+            shape = BLOCK_BLAST_SHAPES[Math.floor(Math.random() * BLOCK_BLAST_SHAPES.length)];
+          }
         }
       } else {
         shape = BLOCK_BLAST_SHAPES[Math.floor(Math.random() * BLOCK_BLAST_SHAPES.length)];
@@ -1725,20 +1905,55 @@
   }
 
   function initBlockBlastGame() {
+    gameMode = 'BlockBlast';
+    gameState = 'PLAYING';
+    activePiece = null;
+    loadSavedData();
+    applyModeUIRules();
+    closeOverlays();
+
     bbBoard = Array.from({ length: 10 }, () => Array(10).fill(null));
     bbPieces = generateSmartBlockBlastPieces();
     isDraggingBB = false;
     bbDragSlot = -1;
     bbHoverPos = null;
+    bbSelectedSlot = null;
+    bbLineClearEffects = [];
+    bbPlacedAnim = null;
+    dragNeedsUpdate = false;
+    cachedBoardRect = null;
     score = 0;
     lines = 0;
     comboCount = 0;
-    gameState = 'PLAYING';
-    document.getElementById('scoreVal').textContent = '0';
-    document.getElementById('linesVal').textContent = '0';
+
+    const dragCanvas = document.getElementById('bbDragCanvas');
+    if (dragCanvas) dragCanvas.style.display = 'none';
+
+    const modeBadge = document.getElementById('modeBadge');
+    if (modeBadge) modeBadge.textContent = 'BLOCK BLAST';
+    const scoreVal = document.getElementById('scoreVal');
+    if (scoreVal) scoreVal.textContent = '0';
+    const linesVal = document.getElementById('linesVal');
+    if (linesVal) linesVal.textContent = '0';
+    const timerBadge = document.getElementById('gameTimerBadge');
+    if (timerBadge) {
+      timerBadge.classList.add('hidden');
+      timerBadge.style.display = 'none';
+    }
     updateComboUI();
-    renderBlockBlastDock();
+
+    const gestureHint = document.getElementById('gestureHint');
+    if (gestureHint) {
+      gestureHint.textContent = '🧩 ลากบล็อกด้านล่าง 3 ชิ้น หรือแตะเลือกแล้วแตะบนกระดาน';
+      gestureHint.classList.remove('fade-out');
+      gestureHint.style.display = 'block';
+    }
+
     resizeCanvases();
+    requestAnimationFrame(() => {
+      resizeCanvases();
+      renderBlockBlastDock();
+    });
   }
 
   function renderBlockBlastDock() {
@@ -1749,7 +1964,8 @@
       const ctx = canvas.getContext('2d');
       const dpr = window.devicePixelRatio || 1;
       const rect = slotEl.getBoundingClientRect();
-      const w = rect.width, h = rect.height;
+      const w = Math.round(rect.width || slotEl.offsetWidth || 130);
+      const h = Math.round(rect.height || slotEl.offsetHeight || 80);
 
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
@@ -1761,14 +1977,21 @@
       const piece = bbPieces[i];
       if (!piece || piece.used) {
         slotEl.classList.add('empty');
+        slotEl.classList.remove('selected', 'dragging-source');
+        slotEl.style.transform = '';
         continue;
       }
       slotEl.classList.remove('empty');
+      slotEl.classList.toggle('selected', bbSelectedSlot === i);
 
       const mat = piece.matrix;
       const mRows = mat.length;
       const mCols = mat[0].length;
-      const mSize = Math.min((w - 14) / Math.max(mCols, 3), (h - 14) / Math.max(mRows, 3));
+
+      const pad = 12;
+      const availW = w - pad * 2;
+      const availH = h - pad * 2;
+      const mSize = Math.min(availW / mCols, availH / mRows, 28);
       const startX = (w - mCols * mSize) / 2;
       const startY = (h - mRows * mSize) / 2;
 
@@ -1782,34 +2005,20 @@
     }
   }
 
-  function drawBlockBlastCell(ctx, x, y, size, colorHex) {
-    const pad = Math.max(1, size * 0.05);
-    const bx = x + pad, by = y + pad, bw = size - pad * 2, bh = size - pad * 2;
-    const rad = Math.max(3, size * 0.18);
+  const BB_COLOR_TO_TYPE = {
+    '#38bdf8': 'I',
+    '#ffd700': 'O',
+    '#a855f7': 'T',
+    '#10b981': 'S',
+    '#e8334a': 'Z',
+    '#ec4899': 'J',
+    '#f97316': 'L'
+  };
 
-    roundRectPath(ctx, bx, by, bw, bh, rad);
-    const grad = ctx.createLinearGradient(bx, by, bx + bw, by + bh);
-    grad.addColorStop(0, colorHex);
-    grad.addColorStop(1, '#0b0d13');
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    // ไฮไลต์แสงเงา 3D ด้านบน
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
-    ctx.lineWidth = Math.max(1, size * 0.08);
-    ctx.beginPath();
-    ctx.moveTo(bx + rad * 0.6, by + bh - rad * 0.6);
-    ctx.lineTo(bx + rad * 0.6, by + rad * 0.6);
-    ctx.lineTo(bx + bw - rad * 0.6, by + rad * 0.6);
-    ctx.stroke();
-
-    // เงาด้านล่าง
-    ctx.strokeStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.beginPath();
-    ctx.moveTo(bx + bw - rad * 0.6, by + rad * 0.6);
-    ctx.lineTo(bx + bw - rad * 0.6, by + bh - rad * 0.6);
-    ctx.lineTo(bx + rad * 0.6, by + bh - rad * 0.6);
-    ctx.stroke();
+  function drawBlockBlastCell(ctx, x, y, size, colorHex, alpha = 1) {
+    if (size <= 2 || alpha <= 0) return;
+    const type = BB_COLOR_TO_TYPE[colorHex] || 'I';
+    drawWoodenBlock(ctx, x, y, size, type, false, alpha);
   }
 
   function renderBlockBlastBoard() {
@@ -1827,47 +2036,126 @@
     boardCtx.save();
     boardCtx.translate(sX, sY);
 
-    // ตารางพื้นหลัง 10x10
+    // 1. ตารางพื้นหลัง 10x10 สไตล์นีออนมิดไนท์
     const bgGrad = boardCtx.createLinearGradient(0, 0, 0, height);
     bgGrad.addColorStop(0, '#131724');
     bgGrad.addColorStop(1, '#0a0d15');
     boardCtx.fillStyle = bgGrad;
     boardCtx.fillRect(0, 0, width, height);
 
-    // เส้นกริดตาราง
-    boardCtx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
-    boardCtx.lineWidth = 1;
-    for (let i = 0; i <= 10; i++) {
-      boardCtx.beginPath();
-      boardCtx.moveTo(i * cellSize, 0); boardCtx.lineTo(i * cellSize, height);
-      boardCtx.moveTo(0, i * cellSize); boardCtx.lineTo(width, i * cellSize);
-      boardCtx.stroke();
+    // 2. เบ้าช่องตารางเซลล์พื้นหลัง (Sleek Cell Sockets)
+    const socketPad = Math.max(1, cellSize * 0.05);
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 10; c++) {
+        const sx = c * cellSize + socketPad;
+        const sy = r * cellSize + socketPad;
+        const sw = cellSize - socketPad * 2;
+        const sh = cellSize - socketPad * 2;
+        roundRectPath(boardCtx, sx, sy, sw, sh, Math.max(3, cellSize * 0.12));
+        boardCtx.fillStyle = 'rgba(255, 255, 255, 0.025)';
+        boardCtx.fill();
+        boardCtx.strokeStyle = 'rgba(255, 255, 255, 0.04)';
+        boardCtx.lineWidth = 1;
+        boardCtx.stroke();
+      }
     }
 
-    // วาดบล็อกที่วางอยู่บนกระดาน 10x10
+    // 3. วาดบล็อกที่วางอยู่บนกระดาน 10x10 พร้อมเอฟเฟกต์เด้งลงล็อกสมูท (Juicy Squash)
     for (let r = 0; r < 10; r++) {
       for (let c = 0; c < 10; c++) {
         const val = bbBoard[r][c];
-        if (val) {
+        if (!val) continue;
+
+        let scale = 1;
+        let flash = 0;
+        if (bbPlacedAnim) {
+          const match = bbPlacedAnim.cells.find(cell => cell.r === r && cell.c === c);
+          if (match) {
+            const p = Math.max(0, bbPlacedAnim.timer / bbPlacedAnim.maxTimer);
+            scale = 1 + Math.sin(p * Math.PI) * 0.14;
+            flash = p * 0.45;
+          }
+        }
+
+        if (scale !== 1) {
+          boardCtx.save();
+          boardCtx.translate((c + 0.5) * cellSize, (r + 0.5) * cellSize);
+          boardCtx.scale(scale, scale);
+          drawBlockBlastCell(boardCtx, -cellSize / 2, -cellSize / 2, cellSize, val);
+          if (flash > 0) {
+            roundRectPath(boardCtx, -cellSize / 2 + 1, -cellSize / 2 + 1, cellSize - 2, cellSize - 2, Math.max(3, cellSize * 0.18));
+            boardCtx.fillStyle = `rgba(255, 255, 255, ${flash})`;
+            boardCtx.fill();
+          }
+          boardCtx.restore();
+        } else {
           drawBlockBlastCell(boardCtx, c * cellSize, r * cellSize, cellSize, val);
         }
       }
     }
 
-    // พรีวิวตำแหน่งที่จะวาง (Ghost Placement Highlight)
-    if (isDraggingBB && bbHoverPos && bbPieces[bbDragSlot]) {
-      const mat = bbPieces[bbDragSlot].matrix;
+    // 4. เอฟเฟกต์ลำแสงล้างแถว (Radiant Sweep Beams)
+    for (const effect of bbLineClearEffects) {
+      const p = Math.max(0, effect.timer / effect.maxTimer);
+      boardCtx.save();
+      effect.fullRows.forEach(r => {
+        const beamY = (r + 0.5) * cellSize;
+        const beamH = cellSize * (1.2 - (1 - p) * 0.8);
+        const grad = boardCtx.createLinearGradient(0, beamY - beamH / 2, 0, beamY + beamH / 2);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        grad.addColorStop(0.5, `rgba(255, 255, 255, ${0.9 * p})`);
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        boardCtx.fillStyle = grad;
+        boardCtx.fillRect(0, beamY - beamH / 2, width, beamH);
+      });
+      effect.fullCols.forEach(c => {
+        const beamX = (c + 0.5) * cellSize;
+        const beamW = cellSize * (1.2 - (1 - p) * 0.8);
+        const grad = boardCtx.createLinearGradient(beamX - beamW / 2, 0, beamX + beamW / 2, 0);
+        grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        grad.addColorStop(0.5, `rgba(255, 255, 255, ${0.9 * p})`);
+        grad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+        boardCtx.fillStyle = grad;
+        boardCtx.fillRect(beamX - beamW / 2, 0, beamW, height);
+      });
+      boardCtx.restore();
+    }
+
+    // 5. พรีวิวตำแหน่งที่จะวาง (Ghost Placement Highlight) + แสงเตือนแถวที่จะถูกล้าง (Anticipation Glow)
+    const activeSlot = (isDraggingBB ? bbDragSlot : bbSelectedSlot);
+    if (activeSlot !== null && activeSlot !== undefined && bbHoverPos && bbPieces[activeSlot] && !bbPieces[activeSlot].used) {
+      const mat = bbPieces[activeSlot].matrix;
+      const color = bbPieces[activeSlot].color;
+
+      const { fullRows, fullCols } = getPotentialClears(mat, bbHoverPos.row, bbHoverPos.col);
+
+      // ไฮไลต์แถวนอน/แถวตั้งที่จะถูกล้างด้วยแสงออร่าทองคำนีออนเร้าใจ!
+      if (fullRows.length > 0 || fullCols.length > 0) {
+        const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.015);
+        boardCtx.save();
+        boardCtx.fillStyle = `rgba(255, 215, 0, ${0.18 + pulse * 0.16})`;
+        fullRows.forEach(r => {
+          boardCtx.fillRect(0, r * cellSize, width, cellSize);
+        });
+        fullCols.forEach(c => {
+          boardCtx.fillRect(c * cellSize, 0, cellSize, height);
+        });
+        boardCtx.restore();
+      }
+
+      // วาดบล็อกเงาโปร่งแสงตรงตำแหน่งที่จะวาง (ตรงเป๊ะ 100% พร้อมขอบแสงเนียนตา)
+      const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.012);
       for (let r = 0; r < mat.length; r++) {
         for (let c = 0; c < mat[0].length; c++) {
           if (mat[r][c]) {
             const hx = (bbHoverPos.col + c) * cellSize;
             const hy = (bbHoverPos.row + r) * cellSize;
+            drawBlockBlastCell(boardCtx, hx, hy, cellSize, color, 0.48);
             boardCtx.save();
-            roundRectPath(boardCtx, hx + 2, hy + 2, cellSize - 4, cellSize - 4, 4);
-            boardCtx.fillStyle = 'rgba(56, 189, 248, 0.35)';
-            boardCtx.fill();
-            boardCtx.strokeStyle = '#38bdf8';
-            boardCtx.lineWidth = 2;
+            const rad = Math.max(3, cellSize * 0.18);
+            roundRectPath(boardCtx, hx + 1.5, hy + 1.5, cellSize - 3, cellSize - 3, rad);
+            boardCtx.strokeStyle = `rgba(255, 255, 255, ${0.75 + pulse * 0.25})`;
+            boardCtx.lineWidth = 2.2;
             boardCtx.stroke();
             boardCtx.restore();
           }
@@ -1875,189 +2163,394 @@
       }
     }
 
-    // วาดชิ้นส่วนที่กำลังลากตามนิ้ว
-    if (isDraggingBB && bbPieces[bbDragSlot]) {
-      const mat = bbPieces[bbDragSlot].matrix;
-      const rect = boardCanvas.getBoundingClientRect();
-      const targetX = bbDragPos.x - rect.left;
-      const targetY = (bbDragPos.y - 45) - rect.top;
-      const dragW = mat[0].length * cellSize;
-      const dragH = mat.length * cellSize;
-      const dX = targetX - dragW / 2;
-      const dY = targetY - dragH / 2;
+    // 6. ละอองเอฟเฟกต์และตัวหนังสือลอยคะแนน
+    particles.forEach(p => p.draw(boardCtx));
+    floatingTexts.forEach(t => t.draw(boardCtx));
 
-      for (let r = 0; r < mat.length; r++) {
-        for (let c = 0; c < mat[0].length; c++) {
-          if (mat[r][c]) {
-            boardCtx.save();
-            boardCtx.shadowColor = 'rgba(0,0,0,0.5)';
-            boardCtx.shadowBlur = 12;
-            drawBlockBlastCell(boardCtx, dX + c * cellSize, dY + r * cellSize, cellSize, bbPieces[bbDragSlot].color);
-            boardCtx.restore();
-          }
+    boardCtx.restore();
+
+    // 7. ซิงค์การลากชิ้นส่วนลอยผ่าน VSync (RAF Update) เพื่อความสมูท 60-120fps
+    if (isDraggingBB && dragNeedsUpdate && bbPieces[bbDragSlot]) {
+      const piece = bbPieces[bbDragSlot];
+      const mat = piece.matrix;
+      const pieceW = mat[0].length * cellSize;
+      const pieceH = mat.length * cellSize;
+      const dragCanvas = document.getElementById('bbDragCanvas');
+
+      const dragLeft = dragTargetX - pieceW / 2;
+      const dragTop = dragIsTouch ? (dragTargetY - pieceH - Math.max(30, cellSize * 0.9)) : (dragTargetY - pieceH / 2);
+
+      if (dragCanvas) {
+        dragCanvas.style.transform = `translate3d(${dragLeft}px, ${dragTop}px, 0)`;
+      }
+
+      if (cachedBoardRect) {
+        const relLeft = dragLeft - cachedBoardRect.left;
+        const relTop = dragTop - cachedBoardRect.top;
+        const col = Math.round(relLeft / cellSize);
+        const row = Math.round(relTop / cellSize);
+        if (canShapeFitAt(mat, row, col)) {
+          bbHoverPos = { row, col };
+        } else {
+          bbHoverPos = null;
+        }
+      }
+      dragNeedsUpdate = false;
+    }
+  }
+
+  function executeBlockBlastPlacement(slotIdx, targetRow, targetCol) {
+    const piece = bbPieces[slotIdx];
+    if (!piece || piece.used) return false;
+    const mat = piece.matrix;
+    if (!canShapeFitAt(mat, targetRow, targetCol)) return false;
+
+    const color = piece.color;
+    let placedCount = 0;
+    const placedCells = [];
+    for (let r = 0; r < mat.length; r++) {
+      for (let c = 0; c < mat[0].length; c++) {
+        if (mat[r][c]) {
+          bbBoard[targetRow + r][targetCol + c] = color;
+          placedCells.push({ r: targetRow + r, c: targetCol + c, color });
+          placedCount++;
         }
       }
     }
 
-    // ละอองเอฟเฟกต์
-    particles.forEach(p => p.draw(boardCtx));
+    piece.used = true;
+    audioMgr.playSnap();
+    score += placedCount * 10;
 
-    boardCtx.restore();
+    // แอนิเมชันเด้งลงล็อกสมูทนุ่มนวล
+    bbPlacedAnim = {
+      cells: placedCells,
+      timer: 140,
+      maxTimer: 140
+    };
+
+    const fullRows = [];
+    for (let r = 0; r < 10; r++) {
+      if (bbBoard[r].every(c => c !== null)) fullRows.push(r);
+    }
+    const fullCols = [];
+    for (let c = 0; c < 10; c++) {
+      let colFull = true;
+      for (let r = 0; r < 10; r++) {
+        if (bbBoard[r][c] === null) { colFull = false; break; }
+      }
+      if (colFull) fullCols.push(c);
+    }
+
+    const totalCleared = fullRows.length + fullCols.length;
+    if (totalCleared > 0) {
+      comboCount++;
+      const comboBonus = totalCleared * 100 * comboCount;
+      score += comboBonus;
+      lines += totalCleared;
+
+      const cellsToClear = [];
+      const seen = new Set();
+      fullRows.forEach(r => {
+        for (let c = 0; c < 10; c++) {
+          const key = `${r},${c}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            cellsToClear.push({ r, c, color: bbBoard[r][c] || '#38bdf8' });
+          }
+        }
+      });
+      fullCols.forEach(c => {
+        for (let r = 0; r < 10; r++) {
+          const key = `${r},${c}`;
+          if (!seen.has(key)) {
+            seen.add(key);
+            cellsToClear.push({ r, c, color: bbBoard[r][c] || '#38bdf8' });
+          }
+        }
+      });
+
+      // ระเบิดละอองอนุภาคตรงจุดที่บล็อกแตก
+      cellsToClear.forEach(({ r, c, color: cellColor }) => {
+        const cX = (c + 0.5) * cellSize;
+        const cY = (r + 0.5) * cellSize;
+        const count = reducedEffects ? 3 : 6;
+        for (let i = 0; i < count; i++) {
+          if (particles.length < 400) {
+            particles.push(new WoodParticle(
+              cX + (Math.random() - 0.5) * (cellSize * 0.7),
+              cY + (Math.random() - 0.5) * (cellSize * 0.7),
+              cellColor
+            ));
+            if (Math.random() < 0.45) {
+              particles.push(new SparkleParticle(cX, cY, '#ffffff'));
+            }
+          }
+        }
+      });
+
+      // ล้างบล็อกออกจากตรรกะกระดานทันที (ไม่บล็อกการลากบล็อกถัดไป)
+      cellsToClear.forEach(({ r, c }) => {
+        bbBoard[r][c] = null;
+      });
+
+      // เพิ่มเอฟเฟกต์ลำแสงลอยสวยงาม 260ms
+      bbLineClearEffects.push({
+        fullRows,
+        fullCols,
+        timer: 260,
+        maxTimer: 260
+      });
+
+      triggerShake(Math.min(12, 4 + totalCleared * 2.5), 250);
+      audioMgr.playClear(totalCleared, true, comboCount);
+      updateComboUI();
+
+      let clearText = `+${comboBonus}`;
+      if (totalCleared === 2) clearText = `DOUBLE! +${comboBonus}`;
+      else if (totalCleared === 3) clearText = `TRIPLE! +${comboBonus}`;
+      else if (totalCleared >= 4) clearText = `MEGA BLAST! +${comboBonus}`;
+      if (comboCount > 1) clearText += ` (×${comboCount})`;
+
+      const avgR = cellsToClear.reduce((acc, curr) => acc + curr.r, 0) / cellsToClear.length;
+      const avgC = cellsToClear.reduce((acc, curr) => acc + curr.c, 0) / cellsToClear.length;
+      floatingTexts.push(new FloatingText(clearText, (avgC + 0.5) * cellSize, (avgR + 0.5) * cellSize, '#ffd700', 20));
+
+      // ตรวจสอบ All Clear (ล้างหมดเกลี้ยงกระดาน)
+      const isBoardEmpty = bbBoard.every(row => row.every(cell => cell === null));
+      if (isBoardEmpty) {
+        score += 3000;
+        comboCount += 3;
+        triggerShake(16, 450);
+        audioMgr.playLevelUp();
+        floatingTexts.push(new FloatingText('🌟 ALL CLEAR! +3,000', 5 * cellSize, 5 * cellSize, '#fef08a', 26));
+        cycleBlockSkin();
+      }
+    } else {
+      comboCount = 0;
+      updateComboUI();
+    }
+
+    document.getElementById('scoreVal').textContent = score.toLocaleString();
+    document.getElementById('linesVal').textContent = lines.toString();
+    saveHighScore();
+
+    bbSelectedSlot = null;
+    bbHoverPos = null;
+    renderBlockBlastDock();
+
+    checkBlockBlastPostPlacement();
+    return true;
+  }
+
+  function checkBlockBlastPostPlacement() {
+    if (bbPieces.every(p => p.used)) {
+      bbPieces = generateSmartBlockBlastPieces();
+      renderBlockBlastDock();
+    }
+
+    const remaining = bbPieces.filter(p => !p.used);
+    const hasValidMove = remaining.some(p => canShapeFitAnywhere(p.matrix));
+    if (remaining.length > 0 && !hasValidMove) {
+      setTimeout(() => {
+        triggerGameOver();
+      }, 350);
+    }
   }
 
   function setupBlockBlastDragHandlers() {
-    function startDrag(slotIdx, clientX, clientY) {
+    let startX = 0, startY = 0;
+    const dragCanvas = document.getElementById('bbDragCanvas');
+
+    function renderPieceOnDragCanvas(piece) {
+      if (!dragCanvas || !piece) return;
+      const dpr = window.devicePixelRatio || 1;
+      const mat = piece.matrix;
+      const mCols = mat[0].length;
+      const mRows = mat.length;
+      const pieceW = mCols * cellSize;
+      const pieceH = mRows * cellSize;
+
+      dragCanvas.width = Math.round(pieceW * dpr);
+      dragCanvas.height = Math.round(pieceH * dpr);
+      dragCanvas.style.width = `${pieceW}px`;
+      dragCanvas.style.height = `${pieceH}px`;
+
+      const ctx = dragCanvas.getContext('2d');
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, pieceW, pieceH);
+
+      // วาดเงาใต้บล็อกนุ่มนวลแบบ GPU-friendly
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.40)';
+      ctx.shadowBlur = 10;
+      ctx.shadowOffsetY = 6;
+      for (let r = 0; r < mRows; r++) {
+        for (let c = 0; c < mCols; c++) {
+          if (mat[r][c]) {
+            drawBlockBlastCell(ctx, c * cellSize, r * cellSize, cellSize, piece.color);
+          }
+        }
+      }
+      ctx.restore();
+    }
+
+    function startDrag(slotIdx, clientX, clientY, isTouch = false) {
       if (gameState !== 'PLAYING') return;
       const piece = bbPieces[slotIdx];
       if (!piece || piece.used) return;
       audioMgr.init();
+
+      cachedBoardRect = boardCanvas.getBoundingClientRect();
       isDraggingBB = true;
       bbDragSlot = slotIdx;
-      bbDragPos = { x: clientX, y: clientY };
+      startX = clientX;
+      startY = clientY;
+
+      const slotEl = document.querySelector(`.bb-dock-slot[data-slot="${slotIdx}"]`);
+      if (slotEl) {
+        slotEl.classList.add('dragging-source');
+        slotEl.style.transform = 'scale(0.92)';
+      }
+
+      renderPieceOnDragCanvas(piece);
+
+      dragTargetX = clientX;
+      dragTargetY = clientY;
+      dragIsTouch = isTouch;
+      dragNeedsUpdate = true;
+
+      const mat = piece.matrix;
+      const pieceW = mat[0].length * cellSize;
+      const pieceH = mat.length * cellSize;
+      const dragLeft = clientX - pieceW / 2;
+      const dragTop = isTouch ? (clientY - pieceH - Math.max(30, cellSize * 0.9)) : (clientY - pieceH / 2);
+
+      if (dragCanvas) {
+        dragCanvas.style.display = 'block';
+        dragCanvas.style.transform = `translate3d(${dragLeft}px, ${dragTop}px, 0)`;
+      }
+
       bbHoverPos = null;
     }
 
-    function moveDrag(clientX, clientY) {
+    function moveDrag(clientX, clientY, isTouch = false) {
       if (!isDraggingBB || !bbPieces[bbDragSlot]) return;
-      bbDragPos = { x: clientX, y: clientY };
-
-      const rect = boardCanvas.getBoundingClientRect();
-      const targetX = clientX - rect.left;
-      const targetY = (clientY - 45) - rect.top;
-      const mat = bbPieces[bbDragSlot].matrix;
-
-      const col = Math.round(targetX / cellSize - mat[0].length / 2);
-      const row = Math.round(targetY / cellSize - mat.length / 2);
-
-      if (canShapeFitAt(mat, row, col)) {
-        bbHoverPos = { row, col };
-      } else {
-        bbHoverPos = null;
-      }
+      dragTargetX = clientX;
+      dragTargetY = clientY;
+      dragIsTouch = isTouch;
+      dragNeedsUpdate = true;
     }
 
-    function endDrag() {
+    function endDrag(clientX, clientY) {
       if (!isDraggingBB) return;
-      if (bbHoverPos && bbPieces[bbDragSlot]) {
-        const mat = bbPieces[bbDragSlot].matrix;
-        const color = bbPieces[bbDragSlot].color;
-        let placedCount = 0;
+      if (dragCanvas) dragCanvas.style.display = 'none';
 
-        for (let r = 0; r < mat.length; r++) {
-          for (let c = 0; c < mat[0].length; c++) {
-            if (mat[r][c]) {
-              bbBoard[bbHoverPos.row + r][bbHoverPos.col + c] = color;
-              placedCount++;
-            }
-          }
-        }
+      const slotIdx = bbDragSlot;
+      const slotEl = document.querySelector(`.bb-dock-slot[data-slot="${slotIdx}"]`);
+      if (slotEl) {
+        slotEl.classList.remove('dragging-source');
+        slotEl.style.transform = '';
+      }
 
-        bbPieces[bbDragSlot].used = true;
-        audioMgr.playSnap();
-        score += placedCount * 10;
+      const dist = Math.hypot(clientX - startX, clientY - startY);
 
-        // ตรวจสอบแถวนอนและแถวตั้งที่เต็มพร้อมกัน
-        const fullRows = [];
-        for (let r = 0; r < 10; r++) {
-          if (bbBoard[r].every(c => c !== null)) fullRows.push(r);
-        }
-        const fullCols = [];
-        for (let c = 0; c < 10; c++) {
-          let colFull = true;
-          for (let r = 0; r < 10; r++) {
-            if (bbBoard[r][c] === null) { colFull = false; break; }
-          }
-          if (colFull) fullCols.push(c);
-        }
-
-        const totalCleared = fullRows.length + fullCols.length;
-        if (totalCleared > 0) {
-          comboCount++;
-          const comboBonus = totalCleared * 100 * comboCount;
-          score += comboBonus;
-          lines += totalCleared;
-
-          // ลบแถวและคอลัมน์ที่เต็ม
-          fullRows.forEach(r => {
-            for (let c = 0; c < 10; c++) {
-              spawnRowParticles(r);
-              bbBoard[r][c] = null;
-            }
-          });
-          fullCols.forEach(c => {
-            for (let r = 0; r < 10; r++) {
-              spawnRowParticles(r);
-              bbBoard[r][c] = null;
-            }
-          });
-
-          triggerShake(Math.min(10, 4 + totalCleared * 2), 250);
-          audioMgr.playClear(totalCleared, true, comboCount);
-          updateComboUI();
-
-          // สลับสกินอัตโนมัติเมื่อทำลายแถวได้
-          cycleBlockSkin(totalCleared);
-        } else {
-          comboCount = 0;
-          updateComboUI();
-        }
-
-        document.getElementById('scoreVal').textContent = score.toLocaleString();
-        document.getElementById('linesVal').textContent = lines.toString();
-        if (score > highScore) {
-          highScore = score;
-          document.getElementById('highScoreVal').textContent = highScore.toLocaleString();
-          try { localStorage.setItem('tetris_wood_highscore', highScore); } catch (e) {}
-        }
-
-        // ตรวจสอบว่าใช้ครบ 3 ชิ้นหรือยัง
-        if (bbPieces.every(p => p.used)) {
-          bbPieces = generateSmartBlockBlastPieces();
-        }
-
+      if (dist < 10) {
+        // แตะ/คลิกเพื่อเลือกชิ้นส่วน (Tap-to-select)
+        bbSelectedSlot = (bbSelectedSlot === slotIdx ? null : slotIdx);
         renderBlockBlastDock();
-
-        // ตรวจสอบว่ายังมีชิ้นส่วนที่สามารถวางลงได้หรือไม่ (Game Over Check)
-        const remaining = bbPieces.filter(p => !p.used);
-        const hasValidMove = remaining.some(p => canShapeFitAnywhere(p.matrix));
-        if (remaining.length > 0 && !hasValidMove) {
-          triggerGameOver();
-        }
+      } else if (bbHoverPos && bbPieces[slotIdx]) {
+        // วางลงตำแหน่งบนกระดานสำเร็จ (ตำแหน่งตรง 100% พร้อมแอนิเมชันเด้งลงล็อก)
+        executeBlockBlastPlacement(slotIdx, bbHoverPos.row, bbHoverPos.col);
+      } else {
+        audioMgr.playMove();
       }
 
       isDraggingBB = false;
       bbHoverPos = null;
       bbDragSlot = -1;
+      dragNeedsUpdate = false;
     }
 
-    // ผูกอีเวนต์เข้ากับแท่นวาง 3 ชิ้น
     document.querySelectorAll('.bb-dock-slot').forEach(slot => {
       const idx = parseInt(slot.getAttribute('data-slot'), 10);
       slot.addEventListener('touchstart', (e) => {
         const t = e.changedTouches[0];
-        if (t) startDrag(idx, t.clientX, t.clientY);
+        if (t) {
+          startDrag(idx, t.clientX, t.clientY, true);
+          if (e.cancelable) e.preventDefault();
+        }
       }, { passive: false });
 
       slot.addEventListener('mousedown', (e) => {
-        startDrag(idx, e.clientX, e.clientY);
+        startDrag(idx, e.clientX, e.clientY, false);
       });
     });
 
     window.addEventListener('touchmove', (e) => {
       if (isDraggingBB && e.changedTouches[0]) {
-        moveDrag(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+        moveDrag(e.changedTouches[0].clientX, e.changedTouches[0].clientY, true);
         if (e.cancelable) e.preventDefault();
       }
     }, { passive: false });
 
     window.addEventListener('mousemove', (e) => {
-      if (isDraggingBB) moveDrag(e.clientX, e.clientY);
+      if (isDraggingBB) {
+        moveDrag(e.clientX, e.clientY, false);
+      } else if (bbSelectedSlot !== null && bbPieces[bbSelectedSlot] && !bbPieces[bbSelectedSlot].used) {
+        // พรีวิวตามเมาส์สำหรับระบบ Tap-to-place
+        const rect = boardCanvas.getBoundingClientRect();
+        const mat = bbPieces[bbSelectedSlot].matrix;
+        const pieceW = mat[0].length * cellSize;
+        const pieceH = mat.length * cellSize;
+        const dragLeft = e.clientX - pieceW / 2;
+        const dragTop = e.clientY - pieceH / 2;
+
+        const relLeft = dragLeft - rect.left;
+        const relTop = dragTop - rect.top;
+        const col = Math.round(relLeft / cellSize);
+        const row = Math.round(relTop / cellSize);
+        if (canShapeFitAt(mat, row, col)) {
+          bbHoverPos = { row, col };
+        } else {
+          bbHoverPos = null;
+        }
+      }
     });
 
-    window.addEventListener('touchend', endDrag);
-    window.addEventListener('mouseup', endDrag);
+    window.addEventListener('touchend', (e) => {
+      if (isDraggingBB) {
+        const t = e.changedTouches ? e.changedTouches[0] : null;
+        endDrag(t ? t.clientX : startX, t ? t.clientY : startY);
+      }
+    });
+
+    window.addEventListener('mouseup', (e) => {
+      if (isDraggingBB) {
+        endDrag(e.clientX, e.clientY);
+      }
+    });
+
+    boardCanvas.addEventListener('click', (e) => {
+      if (gameMode !== 'BlockBlast' || bbSelectedSlot === null || !bbPieces[bbSelectedSlot] || bbPieces[bbSelectedSlot].used) return;
+      const rect = boardCanvas.getBoundingClientRect();
+      const mat = bbPieces[bbSelectedSlot].matrix;
+      const pieceW = mat[0].length * cellSize;
+      const pieceH = mat.length * cellSize;
+      const dragLeft = e.clientX - pieceW / 2;
+      const dragTop = e.clientY - pieceH / 2;
+
+      const relLeft = dragLeft - rect.left;
+      const relTop = dragTop - rect.top;
+      const col = Math.round(relLeft / cellSize);
+      const row = Math.round(relTop / cellSize);
+      if (canShapeFitAt(mat, row, col)) {
+        executeBlockBlastPlacement(bbSelectedSlot, row, col);
+      }
+    });
   }
-const LOCK_DELAY_MODERN_MS = 500;
+
+  const LOCK_DELAY_MODERN_MS = 500;
   const LOCK_DELAY_CLASSIC_MS = 80;
   const MAX_LOCK_RESETS = 15;
   const DAS_MS = 150;
@@ -2925,7 +3418,7 @@ playClear(lines, isCombo = false, comboNum = 0) {
       const scale = progress > 0.82 ? 1 + (progress - 0.82) * 1.6 : 1;
       ctx.save();
       ctx.globalAlpha = Math.min(1, progress * 1.5);
-      ctx.font = `900 ${Math.round(this.size * scale)}px sans-serif`;
+      ctx.font = `900 ${Math.round(this.size * scale)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.shadowColor = this.color;
@@ -3777,12 +4270,14 @@ function spawnRowParticles(fullRowIndices) {
     ultraTimeLeftMs = 120000;
     tensionSurvivalTimer = 0;
 
+    const isTimed = (gameMode === 'Sprint' || gameMode === 'Ultra');
     const timerBadge = document.getElementById('gameTimerBadge');
-    if (gameMode === 'Sprint' || gameMode === 'Ultra') {
-      timerBadge.classList.remove('hidden');
-      timerBadge.textContent = (gameMode === 'Sprint') ? '00:00.00' : '02:00.00';
-    } else {
-      timerBadge.classList.add('hidden');
+    if (timerBadge) {
+      timerBadge.classList.toggle('hidden', !isTimed);
+      timerBadge.style.display = isTimed ? 'inline-block' : 'none';
+      if (isTimed) {
+        timerBadge.textContent = (gameMode === 'Sprint') ? '00:00.00' : '02:00.00';
+      }
     }
 
     const container = boardCanvas.parentElement;
@@ -3811,11 +4306,12 @@ function spawnRowParticles(fullRowIndices) {
     activePiece = null;
     audioMgr.gameOverBgm();
     audioMgr.playGameOver();
+    saveHighScore();
 
     document.getElementById('finalMode').textContent = gameMode;
     document.getElementById('finalScore').textContent = score.toLocaleString();
-    document.getElementById('finalLevel').textContent = level;
-    document.getElementById('finalLines').textContent = lines;
+    document.getElementById('finalLevel').textContent = (gameMode === 'BlockBlast' ? '-' : String(level));
+    document.getElementById('finalLines').textContent = lines.toLocaleString();
 
     prepareGameOverUI();
   }
@@ -3865,9 +4361,11 @@ function spawnRowParticles(fullRowIndices) {
     if (gameMode === 'BlockBlast') {
       const dpr = window.devicePixelRatio || 1;
       const container = boardCanvas.parentElement;
-      const rect = container.getBoundingClientRect();
-      const size = Math.floor(Math.min(rect.width - 8, rect.height - 8));
-      cellSize = Math.floor(size / 10);
+      const rect = container ? container.getBoundingClientRect() : { width: 380, height: 380 };
+      const w = Math.max(140, (rect.width || 380) - 8);
+      const h = Math.max(140, (rect.height || 380) - 8);
+      const size = Math.floor(Math.min(w, h));
+      cellSize = Math.max(14, Math.floor(size / 10));
       const canvasSize = cellSize * 10;
       boardCanvas.width = Math.round(canvasSize * dpr);
       boardCanvas.height = Math.round(canvasSize * dpr);
@@ -3880,13 +4378,13 @@ function spawnRowParticles(fullRowIndices) {
 
     const dpr = window.devicePixelRatio || 1;
     const container = boardCanvas.parentElement;
-    const rect = container.getBoundingClientRect();
+    const rect = container ? container.getBoundingClientRect() : { width: 300, height: 600 };
     const padH = 8;
     const padV = 8;
-    const availW = Math.max(10, rect.width - padH);
-    const availH = Math.max(20, rect.height - padV);
+    const availW = Math.max(100, (rect.width || 300) - padH);
+    const availH = Math.max(200, (rect.height || 600) - padV);
 
-    cellSize = Math.floor(Math.min(availW / COLS, availH / VISIBLE_ROWS));
+    cellSize = Math.max(12, Math.floor(Math.min(availW / COLS, availH / VISIBLE_ROWS)));
     const canvasW = cellSize * COLS;
     const canvasH = cellSize * VISIBLE_ROWS;
 
@@ -3910,7 +4408,8 @@ function spawnRowParticles(fullRowIndices) {
   window.addEventListener('resize', resizeCanvases);
 
   function roundRectPath(ctx, x, y, w, h, r) {
-    const radius = Math.min(r, w / 2, h / 2);
+    if (w <= 0 || h <= 0) return;
+    const radius = Math.max(0, Math.min(r || 0, w / 2, h / 2));
     ctx.beginPath();
     ctx.moveTo(x + radius, y);
     ctx.arcTo(x + w, y, x + w, y + h, radius);
@@ -4019,16 +4518,18 @@ const BLOCK_SKINS = [
   }
 
 function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) {
+    if (size <= 2 || alpha <= 0) return;
     const palette = PIECE_COLORS[type];
     if (!palette) return;
     const pad = Math.max(1, size * 0.045);
     const bx = px + pad, by = py + pad, bw = size - pad * 2, bh = size - pad * 2;
-    const radius = Math.max(3, size * 0.18);
+    if (bw <= 0 || bh <= 0) return;
+    const radius = Math.max(1, size * 0.18);
 
     ctx.save();
     ctx.globalAlpha = alpha;
 
-    // ชิ้นพิเศษ: BOMB (💣)
+    // ชิ้นพิเศษ: BOMB (💣 ระเบิด 3x3)
     if (type === 'BOMB') {
       const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.012);
       ctx.shadowColor = 'rgba(255, 60, 20, 1)';
@@ -4038,14 +4539,38 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
       roundRectPath(ctx, bx, by, bw, bh, radius);
       ctx.fillStyle = grad; ctx.fill();
       ctx.shadowBlur = 0;
-      ctx.font = `${Math.round(size * 0.62)}px sans-serif`;
+
+      // วาดตัวระเบิด 3D Vector ทรงกลมพร้อมสายชนวนและประกายไฟ (ไม่พึ่งพาฟอนต์ระบบ หมดปัญหาช่องสี่เหลี่ยม 100%)
+      const cx = bx + bw * 0.5, cy = by + bh * 0.54;
+      const bRad = size * 0.28;
+      // ตัวลูกระเบิดสีดำเงา
+      const bGrad = ctx.createRadialGradient(cx - bRad * 0.35, cy - bRad * 0.35, bRad * 0.1, cx, cy, bRad);
+      bGrad.addColorStop(0, '#555e6d'); bGrad.addColorStop(0.5, '#1e222b'); bGrad.addColorStop(1, '#0a0c10');
+      ctx.beginPath(); ctx.arc(cx, cy, bRad, 0, Math.PI * 2);
+      ctx.fillStyle = bGrad; ctx.fill();
+      // ขั้วหัวระเบิด
+      ctx.fillStyle = '#9ca3af';
+      ctx.fillRect(cx - size * 0.07, cy - bRad - size * 0.06, size * 0.14, size * 0.07);
+      // สายชนวน
+      ctx.strokeStyle = '#d97706'; ctx.lineWidth = Math.max(1.5, size * 0.06);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy - bRad - size * 0.05);
+      ctx.quadraticCurveTo(cx + size * 0.15, cy - bRad - size * 0.16, cx + size * 0.12, cy - bRad - size * 0.22);
+      ctx.stroke();
+      // ประกายไฟระเบิดวิบวับ
+      ctx.fillStyle = pulse > 0.5 ? '#fef08a' : '#ef4444';
+      ctx.beginPath();
+      ctx.arc(cx + size * 0.12, cy - bRad - size * 0.22, size * (0.07 + pulse * 0.04), 0, Math.PI * 2);
+      ctx.fill();
+
+      // วาด Emoji รองรับฟอนต์ Segoe UI Emoji / Apple Color Emoji เสริม
+      ctx.font = `${Math.round(size * 0.58)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('💣', bx + bw / 2, by + bh / 2 + 1);
       ctx.restore();
       return;
     }
 
-    // ชิ้นพิเศษ: LASER (⚡)
+    // ชิ้นพิเศษ: LASER (⚡ ลำแสงเลเซอร์)
     if (type === 'LASER') {
       const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.016);
       ctx.shadowColor = '#00e5ff';
@@ -4055,14 +4580,33 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
       roundRectPath(ctx, bx, by, bw, bh, radius);
       ctx.fillStyle = grad; ctx.fill();
       ctx.shadowBlur = 0;
-      ctx.font = `${Math.round(size * 0.65)}px sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('⚡', bx + bw / 2, by + bh / 2 + 1);
+
+      // วาดสายฟ้า Vector นีออนเรืองแสงคมกริบ 100%
+      const cx = bx + bw * 0.5, cy = by + bh * 0.5;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.beginPath();
+      ctx.moveTo(size * 0.05, -size * 0.36);
+      ctx.lineTo(-size * 0.20, size * 0.02);
+      ctx.lineTo(-size * 0.02, size * 0.02);
+      ctx.lineTo(-size * 0.08, size * 0.36);
+      ctx.lineTo(size * 0.22, -size * 0.06);
+      ctx.lineTo(size * 0.04, -size * 0.06);
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#00e5ff';
+      ctx.shadowBlur = 8;
+      ctx.fill();
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+      ctx.restore();
+
       ctx.restore();
       return;
     }
 
-    // ชิ้นพิเศษ: VORTEX (🌀)
+    // ชิ้นพิเศษ: VORTEX (🌀 พายุหลุมดำดูด 2 แถวล่าง)
     if (type === 'VORTEX') {
       const angle = (Date.now() * 0.005) % (Math.PI * 2);
       ctx.shadowColor = '#c084fc';
@@ -4072,18 +4616,30 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
       roundRectPath(ctx, bx, by, bw, bh, radius);
       ctx.fillStyle = grad; ctx.fill();
       ctx.shadowBlur = 0;
+
+      // วาดพายุหมุนอวกาศ Vector Galaxy Spiral 3D
       ctx.save();
-      ctx.translate(bx + bw / 2, by + bh / 2);
+      ctx.translate(bx + bw * 0.5, by + bh * 0.5);
       ctx.rotate(angle);
-      ctx.font = `${Math.round(size * 0.65)}px sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('🌀', 0, 1);
+      for (let arm = 0; arm < 3; arm++) {
+        ctx.rotate((Math.PI * 2) / 3);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.quadraticCurveTo(size * 0.16, size * 0.08, size * 0.28, -size * 0.18);
+        ctx.strokeStyle = arm === 0 ? '#ffffff' : (arm === 1 ? '#c084fc' : '#38bdf8');
+        ctx.lineWidth = Math.max(2, size * 0.09);
+        ctx.lineCap = 'round';
+        ctx.stroke();
+      }
+      ctx.beginPath(); ctx.arc(0, 0, size * 0.10, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff'; ctx.fill();
       ctx.restore();
+
       ctx.restore();
       return;
     }
 
-    // ชิ้นพิเศษ: GOLD (🪙)
+    // ชิ้นพิเศษ: GOLD (🪙 เหรียญทองคำ 3D โบนัสแต้ม)
     if (type === 'GOLD') {
       const pulse = 0.5 + 0.5 * Math.sin(Date.now() * 0.010);
       ctx.shadowColor = '#ffd700';
@@ -4093,9 +4649,33 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
       roundRectPath(ctx, bx, by, bw, bh, radius);
       ctx.fillStyle = grad; ctx.fill();
       ctx.shadowBlur = 0;
-      ctx.font = `${Math.round(size * 0.62)}px sans-serif`;
-      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText('🪙', bx + bw / 2, by + bh / 2 + 1);
+
+      // วาดเหรียญทองคำนูน 3D แท้พร้อมลวดลายดาวประกาย (แก้ปัญหาช่องสี่เหลี่ยม ▯ บน Windows 100%)
+      const cx = bx + bw * 0.5, cy = by + bh * 0.5;
+      const cRad = size * 0.32;
+      // ขอบนอกเหรียญทอง
+      ctx.beginPath(); ctx.arc(cx, cy, cRad, 0, Math.PI * 2);
+      ctx.fillStyle = '#f59e0b'; ctx.fill();
+      ctx.strokeStyle = '#fef08a'; ctx.lineWidth = Math.max(1.5, size * 0.06); ctx.stroke();
+      // วงในเหรียญ
+      ctx.beginPath(); ctx.arc(cx, cy, cRad * 0.74, 0, Math.PI * 2);
+      const cGrad = ctx.createRadialGradient(cx - cRad * 0.3, cy - cRad * 0.3, 1, cx, cy, cRad * 0.74);
+      cGrad.addColorStop(0, '#fef08a'); cGrad.addColorStop(0.5, '#eab308'); cGrad.addColorStop(1, '#a16207');
+      ctx.fillStyle = cGrad; ctx.fill();
+      // ลายดาวทองนูนตรงกลางเหรียญ
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.beginPath();
+      for (let s = 0; s < 5; s++) {
+        ctx.lineTo(Math.cos((18 + s * 72) * 0.01745) * cRad * 0.48, -Math.sin((18 + s * 72) * 0.01745) * cRad * 0.48);
+        ctx.lineTo(Math.cos((54 + s * 72) * 0.01745) * cRad * 0.22, -Math.sin((54 + s * 72) * 0.01745) * cRad * 0.22);
+      }
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#fef08a'; ctx.shadowBlur = 4;
+      ctx.fill();
+      ctx.restore();
+
       ctx.restore();
       return;
     }
@@ -4374,17 +4954,26 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
   }
 
   function drawGhostBlock(ctx, px, py, size, type) {
-    const palette = PIECE_COLORS[type];
-    if (!palette) return;
-    const pad = Math.max(2, size * 0.08);
-    const bx = px + pad, by = py + pad, bw = size - pad * 2, bh = size - pad * 2;
-    ctx.save();
-    roundRectPath(ctx, bx, by, bw, bh, Math.max(3, size * 0.16));
-    ctx.strokeStyle = palette.base;
-    ctx.globalAlpha = 0.55;
-    ctx.lineWidth = Math.max(1.5, size * 0.07);
-    ctx.stroke();
-    ctx.restore();
+    // วาดเป็นชิ้นส่วนสกิน / อีโมจิตัวจริงแบบโปร่งแสง (Real Translucent Ghost Emoji & Skin)
+    // แทนที่กรอบสี่เหลี่ยมกลวงว่างเปล่า (หมดปัญหากล่องสี่เหลี่ยมตามภาพของผู้ใช้ 100%)
+    drawWoodenBlock(ctx, px, py, size, type, false, 0.38);
+
+    // หากไม่ใช่ชิ้นพิเศษและไม่ใช่สกินอีโมจิ จึงค่อยใส่ขอบนีออนบางๆ (สำหรับอีโมจิและชิ้นพิเศษจะแสดงตัวจริงโปร่งแสง ไร้กรอบสี่เหลี่ยมขัดตา 100%)
+    if (!SPECIAL_PIECES.includes(type) && !currentBlockSkin.startsWith('meme_')) {
+      const palette = PIECE_COLORS[type];
+      if (palette) {
+        const pad = Math.max(1, size * 0.045);
+        const bx = px + pad, by = py + pad, bw = size - pad * 2, bh = size - pad * 2;
+        const radius = Math.max(3, size * 0.18);
+        ctx.save();
+        roundRectPath(ctx, bx, by, bw, bh, radius);
+        ctx.strokeStyle = palette.light || '#ffffff';
+        ctx.globalAlpha = 0.40;
+        ctx.lineWidth = Math.max(1, size * 0.035);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
   }
 
   function renderBoard() {
@@ -4631,8 +5220,32 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
       if (shakeTimer > 0) shakeTimer = Math.max(0, shakeTimer - dt);
       if (whiteFlashTimer > 0) whiteFlashTimer = Math.max(0, whiteFlashTimer - dt);
       if (comboTextTimer > 0) comboTextTimer = Math.max(0, comboTextTimer - dt);
-      particles.forEach(p => p.update(dt));
-      particles = particles.filter(p => p.alive);
+
+      // อัปเดตละอองอนุภาค
+      for (let i = particles.length - 1; i >= 0; i--) {
+        particles[i].update(dt);
+        if (particles[i].life <= 0) particles.splice(i, 1);
+      }
+
+      // อัปเดตข้อความคะแนนลอย
+      for (let i = floatingTexts.length - 1; i >= 0; i--) {
+        floatingTexts[i].update(dt);
+        if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
+      }
+
+      // อัปเดตเอฟเฟกต์ลำแสงล้างแถว
+      for (let i = bbLineClearEffects.length - 1; i >= 0; i--) {
+        bbLineClearEffects[i].timer -= dt;
+        if (bbLineClearEffects[i].timer <= 0) {
+          bbLineClearEffects.splice(i, 1);
+        }
+      }
+
+      // อัปเดตแอนิเมชันเด้งลงล็อกสมูทนุ่มนวล (Juicy Landing Squash)
+      if (bbPlacedAnim) {
+        bbPlacedAnim.timer -= dt;
+        if (bbPlacedAnim.timer <= 0) bbPlacedAnim = null;
+      }
       return;
     }
 
@@ -4830,6 +5443,7 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
     gameMode = mode;
     document.getElementById('modeBadge').textContent = mode.toUpperCase();
     document.querySelectorAll('.mode-card').forEach(c => c.classList.toggle('active', c.getAttribute('data-mode') === mode));
+    loadSavedData();
     applyModeUIRules();
     if (['PLAYING', 'PAUSED', 'GAMEOVER'].includes(gameState)) startNewGame();
   }
@@ -4837,19 +5451,48 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
   function applyModeUIRules() {
     const isBlockBlast = (gameMode === 'BlockBlast');
     document.body.classList.toggle('mode-block-blast', isBlockBlast);
+
     const bbDock = document.getElementById('blockBlastDock');
-    if (bbDock) bbDock.classList.toggle('hidden', !isBlockBlast);
+    if (bbDock) {
+      bbDock.classList.toggle('hidden', !isBlockBlast);
+      bbDock.style.display = isBlockBlast ? 'flex' : 'none';
+    }
 
     const isClassic = (gameMode === 'Classic');
     const holdBox = document.getElementById('holdPanelBox');
     const nextTitle = document.getElementById('nextPanelTitle');
-    const touchHold = document.getElementById('touchHoldBtn');
-    const touchDrop = document.getElementById('touchHardDropBtn');
+    const rightPanel = document.getElementById('rightPanel');
+    const mobileControls = document.getElementById('mobileControls');
+    const levelBox = document.getElementById('levelPanelBox');
+    const linesBox = document.getElementById('linesPanelBox');
 
     if (holdBox) holdBox.classList.toggle('disabled-panel', isClassic);
     if (nextTitle) nextTitle.textContent = isClassic ? 'NEXT (1)' : 'NEXT (3)';
-    if (touchHold) touchHold.classList.toggle('disabled-btn', isClassic);
-    if (touchDrop) touchDrop.classList.toggle('disabled-btn', isClassic);
+
+    // ป้ายจับเวลา (แสดงเฉพาะโหมดจับเวลา Sprint และ Ultra เท่านั้น ไม่รกหน้าจอในโหมดอื่น)
+    const isTimedMode = (gameMode === 'Sprint' || gameMode === 'Ultra');
+    const timerBadge = document.getElementById('gameTimerBadge');
+    if (timerBadge) {
+      timerBadge.classList.toggle('hidden', !isTimedMode);
+      timerBadge.style.display = isTimedMode ? 'inline-block' : 'none';
+      if (isTimedMode) {
+        timerBadge.textContent = (gameMode === 'Sprint') ? '00:00.00' : '02:00.00';
+      }
+    }
+
+    if (isBlockBlast) {
+      if (rightPanel) rightPanel.style.display = 'none';
+      if (holdBox) holdBox.style.display = 'none';
+      if (levelBox) levelBox.style.display = 'none';
+      if (linesBox) linesBox.style.display = 'none';
+      if (mobileControls) mobileControls.style.display = 'none';
+    } else {
+      if (rightPanel) rightPanel.style.display = '';
+      if (holdBox) holdBox.style.display = '';
+      if (levelBox) levelBox.style.display = '';
+      if (linesBox) linesBox.style.display = '';
+      if (mobileControls) mobileControls.style.display = '';
+    }
   }
 
   function closeOverlays() {
@@ -5258,44 +5901,49 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
   });
 
   // Event Listeners
-  document.getElementById('btnStartGame').addEventListener('click', () => { audioMgr.init(); startNewGame(); });
-  document.getElementById('btnResumeGame').addEventListener('click', () => togglePause());
-  document.getElementById('btnRestartFromPause').addEventListener('click', () => startNewGame());
-  document.getElementById('btnChangeModeFromPause').addEventListener('click', () => openStartMenu());
-  document.getElementById('btnPlayAgain').addEventListener('click', () => startNewGame());
-  document.getElementById('btnBackToMenu').addEventListener('click', () => openStartMenu());
-  document.getElementById('btnModeSwitch').addEventListener('click', () => openStartMenu());
-  document.getElementById('btnPause').addEventListener('click', () => togglePause());
-  document.getElementById('btnRestartTop').addEventListener('click', () => startNewGame());
+    function safeOn(id, evt, fn) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(evt, fn);
+  }
 
-  document.getElementById('btnSound').addEventListener('click', () => openSettingsModal());
-  document.getElementById('btnSettingsFromPause').addEventListener('click', () => openSettingsModal());
-  document.getElementById('btnCloseSettings').addEventListener('click', () => closeSettingsModal());
+  safeOn('btnStartGame', 'click', () => { audioMgr.init(); startNewGame(); });
+  safeOn('btnResumeGame', 'click', () => togglePause());
+  safeOn('btnRestartFromPause', 'click', () => startNewGame());
+    safeOn('btnPlayAgain', 'click', () => startNewGame());
+  safeOn('btnBackToMenu', 'click', () => openStartMenu());
+  safeOn('btnPause', 'click', () => togglePause());
+  safeOn('btnRestartTop', 'click', () => startNewGame());
 
-  document.getElementById('btnTrophies').addEventListener('click', () => openAchievementsModal());
-  document.getElementById('btnCloseAchievements').addEventListener('click', () => closeAchievementsModal());
+  safeOn('btnSound', 'click', () => openSettingsModal());
+  safeOn('btnSettingsFromPause', 'click', () => openSettingsModal());
+  safeOn('btnCloseSettings', 'click', () => closeSettingsModal());
 
-  document.getElementById('chkToggleBgm').addEventListener('change', (e) => {
+  safeOn('btnTrophies', 'click', () => openAchievementsModal());
+  safeOn('btnCloseAchievements', 'click', () => closeAchievementsModal());
+
+  safeOn('chkToggleBgm', 'change', (e) => {
     audioMgr.setBgmEnabled(e.target.checked);
     updateSoundBtnIcon();
   });
-  document.getElementById('sliderBgmVolume').addEventListener('input', (e) => {
+  safeOn('sliderBgmVolume', 'input', (e) => {
     const val = parseInt(e.target.value, 10);
-    document.getElementById('txtBgmVolume').textContent = `${val}%`;
+    const txt = document.getElementById('txtBgmVolume');
+    if (txt) txt.textContent = `${val}%`;
     audioMgr.setBgmVolume(val / 100);
   });
 
-  document.getElementById('chkToggleSfx').addEventListener('change', (e) => {
+  safeOn('chkToggleSfx', 'change', (e) => {
     audioMgr.setSfxEnabled(e.target.checked);
     updateSoundBtnIcon();
   });
-  document.getElementById('sliderSfxVolume').addEventListener('input', (e) => {
+  safeOn('sliderSfxVolume', 'input', (e) => {
     const val = parseInt(e.target.value, 10);
-    document.getElementById('txtSfxVolume').textContent = `${val}%`;
+    const txt = document.getElementById('txtSfxVolume');
+    if (txt) txt.textContent = `${val}%`;
     audioMgr.setSfxVolume(val / 100);
   });
 
-  document.getElementById('chkReducedEffects').addEventListener('change', (e) => {
+  safeOn('chkReducedEffects', 'change', (e) => {
     reducedEffects = e.target.checked;
     try { localStorage.setItem('tetris_wood_reduced_effects', String(reducedEffects)); } catch (err) {}
   });
@@ -5323,8 +5971,6 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
     board = createEmptyBoard();
     initNextQueue();
     
-
-
     setupTouchControls();
     setupBlockBlastDragHandlers();
     resizeCanvases();
