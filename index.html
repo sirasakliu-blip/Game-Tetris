@@ -1784,6 +1784,22 @@
   let dragNeedsUpdate = false;
   let cachedBoardRect = null;
 
+  // คำนวณพิกัดมุมซ้ายบนของชิ้นส่วนลอย พร้อม Clamp ให้อยู่ในหน้าจอโทรศัพท์/แท็บเล็ตเสมอ
+  function getDragTopLeft(clientX, clientY, pieceW, pieceH, isTouch) {
+    let dragLeft = clientX - pieceW / 2;
+    let dragTop = isTouch ? (clientY - pieceH - Math.max(26, (cellSize || 30) * 0.85)) : (clientY - pieceH / 2);
+
+    const minX = 4;
+    const maxX = Math.max(minX, (window.innerWidth || 360) - pieceW - 4);
+    dragLeft = Math.max(minX, Math.min(maxX, dragLeft));
+
+    const minY = 6;
+    const maxY = Math.max(minY, (window.innerHeight || 600) - pieceH - 6);
+    dragTop = Math.max(minY, Math.min(maxY, dragTop));
+
+    return { dragLeft, dragTop };
+  }
+
   function canShapeFitAt(matrix, rStart, cStart) {
     const sRows = matrix.length;
     const sCols = matrix[0].length;
@@ -1814,19 +1830,28 @@
     for (let r = 0; r < mat.length; r++) {
       for (let c = 0; c < mat[0].length; c++) {
         if (mat[r][c]) {
-          tempBoard[targetRow + r][targetCol + c] = '#fff';
+          const rr = targetRow + r;
+          const cc = targetCol + c;
+          if (rr >= 0 && rr < 10 && cc >= 0 && cc < 10) {
+            tempBoard[rr][cc] = '#fff';
+          }
         }
       }
     }
     const fullRows = [];
     for (let r = 0; r < 10; r++) {
-      if (tempBoard[r].every(c => c !== null)) fullRows.push(r);
+      if (tempBoard[r] && tempBoard[r].every(cell => cell !== null && cell !== undefined)) {
+        fullRows.push(r);
+      }
     }
     const fullCols = [];
     for (let c = 0; c < 10; c++) {
       let colFull = true;
       for (let r = 0; r < 10; r++) {
-        if (tempBoard[r][c] === null) { colFull = false; break; }
+        if (!tempBoard[r] || tempBoard[r][c] === null || tempBoard[r][c] === undefined) {
+          colFull = false;
+          break;
+        }
       }
       if (colFull) fullCols.push(c);
     }
@@ -2155,8 +2180,7 @@
       const pieceH = mat.length * cellSize;
       const dragCanvas = document.getElementById('bbDragCanvas');
 
-      const dragLeft = dragTargetX - pieceW / 2;
-      const dragTop = dragIsTouch ? (dragTargetY - pieceH - Math.max(30, cellSize * 0.9)) : (dragTargetY - pieceH / 2);
+      const { dragLeft, dragTop } = getDragTopLeft(dragTargetX, dragTargetY, pieceW, pieceH, dragIsTouch);
 
       if (dragCanvas) {
         dragCanvas.style.transform = `translate3d(${dragLeft}px, ${dragTop}px, 0)`;
@@ -2209,13 +2233,18 @@
 
     const fullRows = [];
     for (let r = 0; r < 10; r++) {
-      if (bbBoard[r].every(c => c !== null)) fullRows.push(r);
+      if (bbBoard[r] && bbBoard[r].every(cell => cell !== null && cell !== undefined)) {
+        fullRows.push(r);
+      }
     }
     const fullCols = [];
     for (let c = 0; c < 10; c++) {
       let colFull = true;
       for (let r = 0; r < 10; r++) {
-        if (bbBoard[r][c] === null) { colFull = false; break; }
+        if (!bbBoard[r] || bbBoard[r][c] === null || bbBoard[r][c] === undefined) {
+          colFull = false;
+          break;
+        }
       }
       if (colFull) fullCols.push(c);
     }
@@ -2381,22 +2410,6 @@
         }
       }
       ctx.restore();
-    }
-
-    // คำนวณพิกัดมุมซ้ายบนของชิ้นส่วนลอย พร้อม Clamp ให้อยู่ในหน้าจอโทรศัพท์/แท็บเล็ตเสมอ
-    function getDragTopLeft(clientX, clientY, pieceW, pieceH, isTouch) {
-      let dragLeft = clientX - pieceW / 2;
-      let dragTop = isTouch ? (clientY - pieceH - Math.max(26, (cellSize || 30) * 0.85)) : (clientY - pieceH / 2);
-
-      const minX = 4;
-      const maxX = Math.max(minX, (window.innerWidth || 360) - pieceW - 4);
-      dragLeft = Math.max(minX, Math.min(maxX, dragLeft));
-
-      const minY = 6;
-      const maxY = Math.max(minY, (window.innerHeight || 600) - pieceH - 6);
-      dragTop = Math.max(minY, Math.min(maxY, dragTop));
-
-      return { dragLeft, dragTop };
     }
 
     function cancelDrag() {
@@ -2597,24 +2610,44 @@
       }
     });
 
+    window.addEventListener('scroll', () => { cachedBoardRect = null; }, { passive: true });
+    window.addEventListener('resize', () => { cachedBoardRect = null; }, { passive: true });
+
     boardCanvas.addEventListener('click', (e) => {
       if (Date.now() - lastDragEndTime < 350) return; // ป้องกัน Ghost click หลังจากลากปล่อยบนมือถือ
       if (gameMode !== 'BlockBlast' || bbSelectedSlot === null || !bbPieces[bbSelectedSlot] || bbPieces[bbSelectedSlot].used) return;
-      if (!cachedBoardRect) cachedBoardRect = boardCanvas.getBoundingClientRect();
-      const rect = cachedBoardRect;
+      const rect = boardCanvas.getBoundingClientRect();
       const mat = bbPieces[bbSelectedSlot].matrix;
-      const pieceW = mat[0].length * cellSize;
-      const pieceH = mat.length * cellSize;
-      const dragLeft = e.clientX - pieceW / 2;
-      const dragTop = e.clientY - pieceH / 2;
+      const mRows = mat.length;
+      const mCols = mat[0].length;
+      const clickCol = Math.floor((e.clientX - rect.left) / cellSize);
+      const clickRow = Math.floor((e.clientY - rect.top) / cellSize);
 
-      const relLeft = dragLeft - rect.left;
-      const relTop = dragTop - rect.top;
-      const col = Math.round(relLeft / cellSize);
-      const row = Math.round(relTop / cellSize);
-      if (canShapeFitAt(mat, row, col)) {
-        executeBlockBlastPlacement(bbSelectedSlot, row, col);
-        if (navigator.vibrate) navigator.vibrate(12);
+      // ลองหาตำแหน่งวางที่ดีที่สุดรอบๆ จุดที่ผู้เล่นแตะ (รอบรับชิ้นแนวตั้งและแนวนอนทุกขนาด 100%)
+      const candidates = [
+        // 1. วางแบบจุดแตะคือมุมซ้ายบนของชิ้น
+        { r: clickRow, c: clickCol },
+        // 2. วางแบบกึ่งกลางชิ้นตรงกับจุดแตะ
+        { r: clickRow - Math.floor(mRows / 2), c: clickCol - Math.floor(mCols / 2) },
+        // 3. วางแบบจุดแตะคือมุมล่าง (กรณีแตะขอบล่างกระดาน)
+        { r: clickRow - mRows + 1, c: clickCol },
+        // 4. วางแบบจุดแตะคือมุมขวา (กรณีแตะขอบขวากระดาน)
+        { r: clickRow, c: clickCol - mCols + 1 }
+      ];
+
+      let placed = false;
+      for (const cand of candidates) {
+        const clampedR = Math.max(0, Math.min(10 - mRows, cand.r));
+        const clampedC = Math.max(0, Math.min(10 - mCols, cand.c));
+        if (canShapeFitAt(mat, clampedR, clampedC)) {
+          executeBlockBlastPlacement(bbSelectedSlot, clampedR, clampedC);
+          if (navigator.vibrate) navigator.vibrate(12);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) {
+        audioMgr.playMove();
       }
     });
   }
@@ -6030,8 +6063,9 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
     // Bind Mobile Control Pad Buttons
     setupMobileButtonHandlers();
 
-    if (btnFullscreen) {
-      btnFullscreen.addEventListener('click', toggleFullscreenMode);
+    const btnFs = document.getElementById('btnFullscreen');
+    if (btnFs) {
+      btnFs.addEventListener('click', toggleFullscreenMode);
     }
 
     document.addEventListener('fullscreenchange', updateFullscreenUI);
