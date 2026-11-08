@@ -1445,7 +1445,7 @@
         </div>
         <div class="mode-card" data-mode="Classic">
           <div class="mode-card-title">🕹️ ดั้งเดิม (Classic)</div>
-          <div class="mode-card-desc">สุ่มอิสระเรโทร, ไม่มีเงา/Hold, ล็อกทันที</div>
+          <div class="mode-card-desc">ต้นตำรับเรโทรแท้ 100%, 7 ชิ้นมาตรฐาน (ไร้บล็อกพิเศษ), ไม่มีเงา/พรีวิว, ไร้ระบบ Hold, ท้าทายระดับเซียน</div>
         </div>
         <div class="mode-card" data-mode="Sprint">
           <div class="mode-card-title">⏱️ จับเวลา (Sprint 40)</div>
@@ -3820,8 +3820,13 @@ function spawnRowParticles(fullRowIndices) {
     bag.push(...types);
   }
 
-  // สุ่มชิ้นส่วนถัดไป พร้อมโอกาส ≈ 7% ที่จะได้ชิ้นพิเศษ (Bomb, Laser, Vortex, Gold) โดยไม่เกิดติดกัน
+  // สุ่มชิ้นส่วนถัดไป: โหมด Classic ใช้ 7 ชิ้นส่วนมาตรฐานของ Tetris ดั้งเดิมแท้ 100% (ไร้บล็อกพิเศษโดยสิ้นเชิง)
+  // โหมด Modern/Sprint/Ultra มีโอกาส ≈ 7% ที่จะได้ชิ้นพิเศษ (Bomb, Laser, Vortex, Gold) โดยไม่เกิดติดกัน
   function pullNextType() {
+    if (gameMode === 'Classic') {
+      return PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)];
+    }
+
     if (!lastWasSpecial && Math.random() < 0.07) {
       lastWasSpecial = true;
       const r = Math.random();
@@ -3832,12 +3837,8 @@ function spawnRowParticles(fullRowIndices) {
     }
     lastWasSpecial = false;
 
-    if (gameMode === 'Classic') {
-      return PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)];
-    } else {
-      if (bag.length < 7) refillBag();
-      return bag.shift();
-    }
+    if (bag.length < 7) refillBag();
+    return bag.shift();
   }
 
   function initNextQueue() {
@@ -5331,15 +5332,36 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
 
   function renderHold() {
     holdCtx.clearRect(0, 0, holdCanvas.width, holdCanvas.height);
-    if (gameMode === 'Classic') return;
-    drawMiniPiece(holdCtx, holdPieceType, holdCanvas.width / (window.devicePixelRatio || 1), 0, holdCanvas.height / (window.devicePixelRatio || 1), canHold ? 1 : 0.45);
+    const dpr = window.devicePixelRatio || 1;
+    const w = holdCanvas.width / dpr, h = holdCanvas.height / dpr;
+    if (gameMode === 'Classic') {
+      holdCtx.save();
+      holdCtx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      holdCtx.font = `700 ${Math.max(11, Math.round(w * 0.18))}px 'Prompt', sans-serif`;
+      holdCtx.textAlign = 'center';
+      holdCtx.textBaseline = 'middle';
+      holdCtx.fillText('OFF', w / 2, h / 2);
+      holdCtx.restore();
+      return;
+    }
+    drawMiniPiece(holdCtx, holdPieceType, w, 0, h, canHold ? 1 : 0.45);
   }
 
   function renderNext() {
     nextCtx.clearRect(0, 0, nextCanvas.width, nextCanvas.height);
     const dpr = window.devicePixelRatio || 1;
     const w = nextCanvas.width / dpr, h = nextCanvas.height / dpr;
-    const count = (gameMode === 'Classic') ? 1 : 3;
+    if (gameMode === 'Classic') {
+      nextCtx.save();
+      nextCtx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+      nextCtx.font = `700 ${Math.max(11, Math.round(w * 0.18))}px 'Prompt', sans-serif`;
+      nextCtx.textAlign = 'center';
+      nextCtx.textBaseline = 'middle';
+      nextCtx.fillText('OFF', w / 2, h / 2);
+      nextCtx.restore();
+      return;
+    }
+    const count = 3;
     const slotH = h / count;
     for (let i = 0; i < count; i++) {
       drawMiniPiece(nextCtx, nextQueue[i], w, i * slotH, slotH, 1);
@@ -5600,14 +5622,42 @@ function drawWoodenBlock(ctx, px, py, size, type, isGlowing = false, alpha = 1) 
 
     const isClassic = (gameMode === 'Classic');
     const holdBox = document.getElementById('holdPanelBox');
+    const holdTitle = holdBox ? holdBox.querySelector('.panel-title') : null;
+    const nextBox = document.getElementById('nextPanelBox');
     const nextTitle = document.getElementById('nextPanelTitle');
     const rightPanel = document.getElementById('rightPanel');
     const mobileControls = document.getElementById('mobileControls');
     const levelBox = document.getElementById('levelPanelBox');
     const linesBox = document.getElementById('linesPanelBox');
 
-    if (holdBox) holdBox.classList.toggle('disabled-panel', isClassic);
-    if (nextTitle) nextTitle.textContent = isClassic ? 'NEXT (1)' : 'NEXT (3)';
+    if (holdBox) {
+      holdBox.classList.toggle('disabled-panel', isClassic);
+      holdBox.style.cursor = isClassic ? 'default' : 'pointer';
+    }
+    if (holdTitle) holdTitle.textContent = isClassic ? 'HOLD (OFF)' : 'HOLD (C)';
+
+    if (nextBox) nextBox.classList.toggle('disabled-panel', isClassic);
+    if (nextTitle) nextTitle.textContent = isClassic ? 'NEXT (OFF)' : 'NEXT (3)';
+
+    const btnMcHold = document.getElementById('btnMcHold');
+    const btnMcHard = document.getElementById('btnMcHard');
+    if (btnMcHold) {
+      btnMcHold.style.display = isClassic ? 'none' : '';
+      btnMcHold.disabled = isClassic;
+    }
+    if (btnMcHard) {
+      btnMcHard.style.display = isClassic ? 'none' : '';
+      btnMcHard.disabled = isClassic;
+    }
+
+    const gestureHint = document.getElementById('gestureHint');
+    if (gestureHint && !gestureHint.classList.contains('fade-out')) {
+      if (isClassic) {
+        gestureHint.textContent = '🕹️ โหมด Classic: บล็อกลงทันที ไร้เงาตก ไร้พรีวิว และไม่มีการ Hold (ท้าทายสไตล์เรโทร)';
+      } else if (!isBlockBlast) {
+        gestureHint.textContent = '👆 แตะในจอ = หมุนบล็อก | 👈👉 เลื่อนนิ้ว = ขยับ | 👇 รูดลง = ลงเร็ว | 👆 ปัดขึ้น = หมุนบล็อก';
+      }
+    }
 
     // ป้ายจับเวลา (แสดงเฉพาะโหมดจับเวลา Sprint และ Ultra เท่านั้น ไม่รกหน้าจอในโหมดอื่น)
     const isTimedMode = (gameMode === 'Sprint' || gameMode === 'Ultra');
