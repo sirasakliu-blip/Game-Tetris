@@ -5279,7 +5279,7 @@ const BLOCK_SKINS = [
         this.reconnectTimer = null;
       }
 
-      this.updateServerStatusUI('connecting', 'กำลังเชื่อมต่อเซิร์ฟเวอร์ Render...');
+      this.updateServerStatusUI('connecting', 'กำลังเชื่อมต่อเซิร์ฟเวอร์...');
 
       if (this.ws) {
         try {
@@ -5302,7 +5302,7 @@ const BLOCK_SKINS = [
         this.ws = new WebSocket(wsUrl);
 
         this.ws.onopen = () => {
-          this.updateServerStatusUI('online', '🟢 ออนไลน์ (เชื่อมต่อเซิร์ฟเวอร์ Render สำเร็จ)');
+          this.updateServerStatusUI('online', 'ออนไลน์ (พร้อมเล่น)');
           this.ws.send(JSON.stringify({ type: 'SET_PLAYER_NAME', name: this.getPlayerName() }));
           this.ws.send(JSON.stringify({ type: 'LIST_ROOMS' }));
         };
@@ -5318,11 +5318,11 @@ const BLOCK_SKINS = [
 
         this.ws.onerror = (err) => {
           console.warn('WebSocket connection error:', err);
-          this.updateServerStatusUI('offline', '🔴 กำลังรอเซิร์ฟเวอร์ Render ตอบรับ (กำลังเชื่อมต่อใหม่...)');
+          this.updateServerStatusUI('offline', 'กำลังรอการเชื่อมต่อ (กำลังลองใหม่...)');
         };
 
         this.ws.onclose = () => {
-          this.updateServerStatusUI('offline', '🔴 ออฟไลน์ (กำลังเชื่อมต่อเซิร์ฟเวอร์ใหม่...)');
+          this.updateServerStatusUI('offline', 'ออฟไลน์ (กำลังเชื่อมต่อใหม่...)');
           if (!this.reconnectTimer) {
             this.reconnectTimer = setTimeout(() => {
               this.reconnectTimer = null;
@@ -5332,7 +5332,7 @@ const BLOCK_SKINS = [
         };
       } catch (err) {
         console.error('WebSocket exception:', err);
-        this.updateServerStatusUI('offline', '🔴 URL เซิร์ฟเวอร์ไม่ถูกต้อง');
+        this.updateServerStatusUI('offline', 'URL เซิร์ฟเวอร์ไม่ถูกต้อง');
       }
     }
 
@@ -5674,7 +5674,7 @@ const BLOCK_SKINS = [
       } else {
         // Try connecting now and show custom alert
         this.connectWebSocket(this.renderUrl);
-        showCustomAlert('⏳ กำลังเชื่อมต่อเซิร์ฟเวอร์', 'ระบบกำลังเชื่อมต่อกับเซิร์ฟเวอร์ Render... หากเซิร์ฟเวอร์เพิ่งตื่นอาจใช้เวลา 15-30 วินาที กรุณารอสักครู่แล้วลองกดสร้างห้องใหม่อีกครั้ง', '⏳');
+        showCustomAlert('⏳ กำลังเชื่อมต่อเซิร์ฟเวอร์', 'ระบบกำลังเชื่อมต่อกับเซิร์ฟเวอร์ กรุณารอสักครู่แล้วลองกดสร้างห้องใหม่อีกครั้ง', '⏳');
       }
     }
 
@@ -6059,7 +6059,7 @@ const BLOCK_SKINS = [
       const rooms = (this.ws && this.ws.readyState === WebSocket.OPEN) ? this.rooms : [];
 
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        listEl.innerHTML = '<div class="room-empty-state"><div class="room-empty-icon">⏳</div><div>กำลังเชื่อมต่อเซิร์ฟเวอร์ Render...</div><div style="font-size:0.75rem; color:#94a3b8;">เซิร์ฟเวอร์ออนไลน์ฟรีกำลังตื่นตัว กรุณารอสักครู่ หรือกดปุ่ม "⚡ เชื่อมต่อใหม่" ด้านบน</div></div>';
+        listEl.innerHTML = '<div class="room-empty-state"><div class="room-empty-icon">⏳</div><div>กำลังเชื่อมต่อเซิร์ฟเวอร์...</div><div style="font-size:0.75rem; color:#94a3b8;">กรุณารอสักครู่ หรือกดปุ่ม "⚡ เชื่อมต่อใหม่" ด้านบน</div></div>';
         return;
       }
 
@@ -6928,7 +6928,7 @@ const BLOCK_SKINS = [
       });
     }
 
-    // ปุ่มเชื่อมต่อเซิร์ฟเวอร์ Render ใหม่
+    // ปุ่มเชื่อมต่อเซิร์ฟเวอร์ใหม่
     safeOn('btnReconnectWs', 'click', () => {
       lobbyMgr.connectWebSocket(lobbyMgr.renderUrl);
     });
