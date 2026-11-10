@@ -197,6 +197,7 @@
     <h2 class="modal-title">พักการเล่นชั่วคราว</h2>
     <p class="modal-subtitle">เวลาถูกหยุดไว้ชั่วคราว</p>
     <button id="btnResumeGame" class="btn-primary">▶ เล่นต่อ (Resume)</button>
+    <button id="btnOpenRulesFromPause" class="btn-secondary">📖 วิธีเล่น & ปุ่มควบคุม</button>
     <button id="btnSettingsFromPause" class="btn-secondary">⚙️ ตั้งค่าเสียง & เอฟเฟกต์</button>
     <button id="btnRestartFromPause" class="btn-secondary">🔄 เริ่มเกมใหม่ (โหมดเดิม)</button>
     <button id="btnMenuFromPause" class="btn-secondary">🎮 เปลี่ยนโหมด / เมนูหลัก (Change Mode)</button>
@@ -849,6 +850,15 @@
       <button id="btnRejectRematchPrompt" class="btn-secondary" style="padding: 10px 18px; font-size: 1rem; border-radius: 8px; cursor: pointer;">
         ❌ ปฏิเสธ
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- หน้าต่างนับถอยหลังก่อนเริ่มการแข่งขัน (Countdown Overlay) -->
+<div id="vsCountdownOverlay" class="overlay hidden" style="z-index: 99999; background: rgba(10, 14, 23, 0.75); backdrop-filter: blur(4px);">
+  <div style="text-align: center;">
+    <div id="vsCountdownText" style="font-family: var(--font-digital); font-size: 6rem; font-weight: 900; color: #f59e0b; text-shadow: 0 0 35px rgba(245, 158, 11, 0.8), 0 0 70px rgba(245, 158, 11, 0.4); animation: popIn 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);">
+      3
     </div>
   </div>
 </div>

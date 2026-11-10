@@ -5595,11 +5595,32 @@ const BLOCK_SKINS = [
       } else if (msg.type === 'GUEST_LEFT') {
         if (this.currentRoom) {
           this.currentRoom.guestName = null;
+          this.currentRoom.guestId = null;
           this.updateWaitingUI();
         }
+
+        // ปิดหน้าต่างการแข่งและการแจ้งเตือนต่างๆ
+        const promptModal = document.getElementById('rematchPromptModal');
+        if (promptModal) promptModal.classList.add('hidden');
+        const vsGov = document.getElementById('vsGameOverOverlay');
+        if (vsGov) vsGov.classList.add('hidden');
+        closeOverlays();
+
+        // แจ้งเตือน Host และนำกลับสู่หน้าห้องรอ (Waiting View) อย่างสมบูรณ์
+        showCustomAlert('🚪 ผู้เล่นออกจากห้อง', msg.message || 'ผู้เล่นคู่ต่อสู้ออกจากเกมแล้ว ระบบพาคุณกลับสู่ห้องรอ', '🚪');
+        this.openLobby();
+        this.showView('waiting');
+        this.updateWaitingUI();
       } else if (msg.type === 'ROOM_CLOSED') {
+        const promptModal = document.getElementById('rematchPromptModal');
+        if (promptModal) promptModal.classList.add('hidden');
+        const vsGov = document.getElementById('vsGameOverOverlay');
+        if (vsGov) vsGov.classList.add('hidden');
+        closeOverlays();
+
         showCustomAlert('🚪 ห้องถูกปิดแล้ว', msg.message || 'เจ้าของห้องออกจากห้องแล้ว ระบบจะพากลับสู่ล็อบบี้', '🚪');
         this.leaveRoom(false);
+        this.openLobby();
       } else if (msg.type === 'MATCH_STARTED') {
         this.isStartingMatch = false;
         this.launchMatch(msg);
@@ -5656,6 +5677,17 @@ const BLOCK_SKINS = [
           this.leaveRoom(false);
         }
         this.renderRoomList();
+      } else if (msg.type === 'PLAYER_LEFT') {
+        const rooms = this.getRoomsFromStorage();
+        if (this.currentRoom && this.currentRoom.id === msg.roomId && this.isHost) {
+          this.currentRoom.guestName = null;
+          this.currentRoom.guestId = null;
+          this.updateWaitingUI();
+          showCustomAlert('🚪 ผู้เล่นออกจากห้อง', 'ผู้เล่นคู่ต่อสู้ออกจากเกมแล้ว', '🚪');
+          this.openLobby();
+          this.showView('waiting');
+          this.updateWaitingUI();
+        }
       } else if (msg.type === 'JOIN_ROOM') {
         if (this.currentRoom && this.currentRoom.id === msg.roomId && this.isHost) {
           this.currentRoom.guestName = msg.guestName || 'Player 2';
@@ -6622,8 +6654,8 @@ const BLOCK_SKINS = [
     audioMgr.init();
     if (['ArrowLeft', 'ArrowRight', 'ArrowDown', 'ArrowUp', 'Space'].includes(e.code)) e.preventDefault();
     if (e.code === 'Escape') {
-      const setM = document.getElementById('settingsModal');
-      const achM = document.getElementById('achievementsModal');
+      const setM = document.getElementById('settingsOverlay') || document.getElementById('settingsModal');
+      const achM = document.getElementById('achievementsOverlay') || document.getElementById('achievementsModal');
       if (setM && !setM.classList.contains('hidden')) { closeSettingsModal(); return; }
       if (achM && !achM.classList.contains('hidden')) { closeAchievementsModal(); return; }
       togglePause();
@@ -7120,9 +7152,19 @@ const BLOCK_SKINS = [
   safeOn('btnResumeGame', 'click', () => togglePause());
   safeOn('btnOpenRulesFromPause', 'click', () => openRulesModal('tabControls'));
   safeOn('btnRestartFromPause', 'click', () => startNewGame());
-    safeOn('btnMenuFromPause', 'click', () => openStartMenu());
-    safeOn('btnPlayAgain', 'click', () => startNewGame());
-  safeOn('btnBackToMenu', 'click', () => openStartMenu());
+  safeOn('btnMenuFromPause', 'click', () => {
+    if (typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.leaveRoom(true);
+    }
+    openStartMenu();
+  });
+  safeOn('btnPlayAgain', 'click', () => startNewGame());
+  safeOn('btnBackToMenu', 'click', () => {
+    if (typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.leaveRoom(true);
+    }
+    openStartMenu();
+  });
   safeOn('btnPause', 'click', () => togglePause());
   safeOn('btnRestartTop', 'click', () => startNewGame());
 
@@ -7298,6 +7340,13 @@ const BLOCK_SKINS = [
       lobbyMgr.pendingJoinRoom = null;
     });
 
+
+    // แจ้งเตือนเซิร์ฟเวอร์ให้ออกจากห้องทันทีเมื่อปิดแท็บหรือรีเฟรชหน้าเว็บ
+    window.addEventListener('beforeunload', () => {
+      if (typeof lobbyMgr !== 'undefined') {
+        lobbyMgr.leaveRoom(true);
+      }
+    });
 
     // Custom Alert Modal confirmation
     safeOn('btnConfirmLobbyAlert', 'click', () => closeCustomAlert());
