@@ -74,6 +74,8 @@
         <span class="vs-badge-title" id="vsMatchTitle">BEST OF 3</span>
         <span class="vs-badge-star" id="oppStarsBadgeVal">☆☆</span>
       </div>
+      <!-- ป้ายบทบาทการเล่นแบบแบ่งหน้าที่ / 2 ชิ้น (Co-op Role Banner) -->
+      <div id="coopRoleBanner" class="coop-role-banner hidden"></div>
       <div class="board-container" id="boardContainer">
         <!-- แถบขยะสำหรับโหมด Multiplayer (Main Garbage Bar) -->
         <div class="main-garbage-track hidden" id="mainGarbageTrack">
@@ -375,7 +377,7 @@
     <div class="lobby-header">
       <div class="lobby-header-left">
         <h2 class="lobby-title">⚔️ MULTIPLAYER 1V1 LOBBY</h2>
-        <p class="lobby-subtitle">ระบบห้องแข่งขันประลองความเร็ว บล็อกแฟร์ 7-Bag และระบบส่งขยะ</p>
+        <p class="lobby-subtitle">ระบบห้องแข่งขันประลองความเร็ว บล็อกแฟร์ 7-Bag</p>
       </div>
 
       <div class="lobby-header-right">
@@ -473,6 +475,26 @@
             </div>
           </div>
 
+          <!-- ตั้งค่าเสริมปั่นๆ (Party & Co-op Modifiers) -->
+          <div class="lobby-form-group">
+            <label class="lobby-form-label">🎭 ตั้งค่าเสริมปั่นๆ (โหมด 2 คนช่วยกันเล่น):</label>
+            <div class="lobby-modifiers-group">
+              <label class="lobby-modifier-card" for="chkSplitRole">
+                <input type="checkbox" id="chkSplitRole" class="modifier-checkbox">
+                <div class="modifier-content">
+                  <div class="modifier-title">🎯 คนนึงเล็ง อีกคนหมุน (Split Roles)</div>
+                  <div class="modifier-desc">คนนึงเล็งทิศทาง/ทิ้งบล็อก อีกคนหมุน/Hold เล่นกระดานเดียวกัน!</div>
+                </div>
+              </label>
+              <label class="lobby-modifier-card" for="chkDualDrop">
+                <input type="checkbox" id="chkDualDrop" class="modifier-checkbox">
+                <div class="modifier-content">
+                  <div class="modifier-title">👥 บล็อกลงมาทีละ 2 ช่วยกันวาง (Dual Drop)</div>
+                  <div class="modifier-desc">บล็อกตกลงมาพร้อมกัน 2 ชิ้น ช่วยกันควบคุมวางแยกกันคนละชิ้น!</div>
+                </div>
+              </label>
+            </div>
+          </div>
 
           <button type="button" id="btnCreateRoomSubmit" class="btn-lobby-primary" style="margin-top: 14px; width: 100%;">
             🚀 สร้างห้องและเปิดรับผู้เล่น
@@ -512,6 +534,7 @@
           <span class="meta-chip" id="waitRoomFormat">Best of 3</span>
           <span class="meta-chip" id="waitRoomLock">🌐 สาธารณะ</span>
           <span class="meta-chip" id="waitRoomModeBadge">🌐 ออนไลน์ 1v1</span>
+          <span class="meta-chip modifier-chip hidden" id="waitRoomModifierBadge">🎭 แบ่งหน้าที่</span>
         </div>
       </div>
 

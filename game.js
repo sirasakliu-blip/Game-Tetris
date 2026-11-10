@@ -2304,8 +2304,111 @@ function spawnRowParticles(fullRowIndices) {
     if (isGrounded && lockResets < MAX_LOCK_RESETS) { lockTimer = 0; lockResets++; }
   }
 
+  // ==========================================
+  // Co-op & Split Roles Input & Controls (ระบบปั่นๆ 2 คน)
+  // ==========================================
+  let vsSplitRole = false;
+  let vsDualDrop = false;
+  let dualActivePiece = null;
+  let dualLockTimer = 0;
+  let dualLockResets = 0;
+  let dualIsGrounded = false;
+  let dualDropAccumulator = 0;
+
+  function canLocalPlayerAim() {
+    if (gameMode !== 'Versus' || !vsSplitRole) return true;
+    return typeof lobbyMgr !== 'undefined' && lobbyMgr.isHost;
+  }
+
+  function canLocalPlayerRotate() {
+    if (gameMode !== 'Versus' || !vsSplitRole) return true;
+    return typeof lobbyMgr !== 'undefined' && !lobbyMgr.isHost;
+  }
+
+  function updateCoopRoleUI() {
+    const banner = document.getElementById('coopRoleBanner');
+    if (!banner) return;
+
+    if (gameMode !== 'Versus' || (!vsSplitRole && !vsDualDrop)) {
+      banner.classList.add('hidden');
+      document.querySelectorAll('.mc-btn').forEach(b => {
+        b.classList.remove('role-active-btn', 'role-partner-btn');
+      });
+      return;
+    }
+
+    banner.classList.remove('hidden');
+
+    if (vsSplitRole) {
+      const isAimer = typeof lobbyMgr !== 'undefined' && lobbyMgr.isHost;
+      if (isAimer) {
+        banner.innerHTML = '🎯 <b>หน้าที่ของคุณ: ผู้เล็งทิศทาง (Host)</b><br><span style="font-size:0.75rem; color:#93c5fd;">ควบคุม ซ้าย / ขวา / ลงเร็ว / ทิ้งบล็อก (ให้คู่หูเป็นคนหมุนบล็อก)</span>';
+        banner.style.borderColor = '#38bdf8';
+      } else {
+        banner.innerHTML = '🔄 <b>หน้าที่ของคุณ: ผู้หมุนบล็อก (Guest)</b><br><span style="font-size:0.75rem; color:#d8b4fe;">ควบคุม หมุนบล็อก / สลับชิ้น Hold (ให้คู่หูเป็นคนเล็งทิศทาง)</span>';
+        banner.style.borderColor = '#c084fc';
+      }
+
+      // ปรับปุ่มบนจอมือถือ (Mobile Touch Controls) ให้สอดคล้องกับบทบาท
+      const leftGroup = ['btnMcLeft', 'btnMcRight', 'btnMcDown', 'btnMcHard'];
+      const rightGroup = ['btnMcRotCW', 'btnMcRotCCW', 'btnMcHold'];
+
+      leftGroup.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          btn.classList.toggle('role-active-btn', isAimer);
+          btn.classList.toggle('role-partner-btn', !isAimer);
+        }
+      });
+
+      rightGroup.forEach(id => {
+        const btn = document.getElementById(id);
+        if (btn) {
+          btn.classList.toggle('role-active-btn', !isAimer);
+          btn.classList.toggle('role-partner-btn', isAimer);
+        }
+      });
+    } else if (vsDualDrop) {
+      const isHost = typeof lobbyMgr !== 'undefined' && lobbyMgr.isHost;
+      if (isHost) {
+        banner.innerHTML = '👥 <b>บล็อกลงมาพร้อมกัน 2 ชิ้น (Dual Drop)</b><br><span style="font-size:0.75rem; color:#6ee7b7;">👑 คุณควบคุมบล็อกซ้าย (P1) | 👤 คู่หูควบคุมบล็อกขวา (P2) ช่วยกันวาง!</span>';
+      } else {
+        banner.innerHTML = '👥 <b>บล็อกลงมาพร้อมกัน 2 ชิ้น (Dual Drop)</b><br><span style="font-size:0.75rem; color:#6ee7b7;">👤 คุณควบคุมบล็อกขวา (P2) | 👑 คู่หูควบคุมบล็อกซ้าย (P1) ช่วยกันวาง!</span>';
+      }
+      banner.style.borderColor = '#10b981';
+
+      document.querySelectorAll('.mc-btn').forEach(b => {
+        b.classList.remove('role-active-btn', 'role-partner-btn');
+      });
+    }
+  }
+
   function moveHorizontal(dir) {
-    if (gameState !== 'PLAYING' || !activePiece) return false;
+    if (gameState !== 'PLAYING') return false;
+
+    if (gameMode === 'Versus' && vsDualDrop) {
+      const isHost = typeof lobbyMgr !== 'undefined' && lobbyMgr.isHost;
+      if (!isHost) {
+        return moveDualHorizontal(dir);
+      }
+    }
+
+    if (!canLocalPlayerAim()) {
+      floatingTexts.push(new FloatingText('คุณคือคนหมุน! ให้คู่หูเป็นคนเล็ง 🎯', (COLS * cellSize) / 2, 120, '#38bdf8', 16));
+      return false;
+    }
+
+    const res = executeMoveHorizontal(dir);
+    if (res && gameMode === 'Versus' && vsSplitRole && typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopInput({ action: 'move', val: dir });
+    } else if (res && gameMode === 'Versus' && vsDualDrop && typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopInput({ action: 'p1Move', val: dir });
+    }
+    return res;
+  }
+
+  function executeMoveHorizontal(dir) {
+    if (!activePiece) return false;
     if (!checkCollision(activePiece.x + dir, activePiece.y, activePiece.rot)) {
       activePiece.x += dir;
       resetLockDelayIfAllowed();
@@ -2315,9 +2418,46 @@ function spawnRowParticles(fullRowIndices) {
     return false;
   }
 
+  function moveDualHorizontal(dir) {
+    if (gameState !== 'PLAYING' || !dualActivePiece) return false;
+    if (!checkCollision(dualActivePiece.x + dir, dualActivePiece.y, dualActivePiece.rot, dualActivePiece.type)) {
+      dualActivePiece.x += dir;
+      audioMgr.playMove();
+      if (typeof lobbyMgr !== 'undefined') {
+        lobbyMgr.sendCoopInput({ action: 'p2Move', val: dir });
+      }
+      return true;
+    }
+    return false;
+  }
+
   function rotatePiece(dir) {
-    if (gameState !== 'PLAYING' || !activePiece) return;
-    if (SPECIAL_PIECES.includes(activePiece.type) && !activePiece.type.includes('_')) return;
+    if (gameState !== 'PLAYING') return;
+
+    if (gameMode === 'Versus' && vsDualDrop) {
+      const isHost = typeof lobbyMgr !== 'undefined' && lobbyMgr.isHost;
+      if (!isHost) {
+        rotateDualPiece(dir);
+        return;
+      }
+    }
+
+    if (!canLocalPlayerRotate()) {
+      floatingTexts.push(new FloatingText('คุณคือคนเล็ง! ให้คู่หูเป็นคนหมุน 🔄', (COLS * cellSize) / 2, 120, '#c084fc', 16));
+      return;
+    }
+
+    const res = executeRotatePiece(dir);
+    if (res && gameMode === 'Versus' && vsSplitRole && typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopInput({ action: 'rotate', val: dir });
+    } else if (res && gameMode === 'Versus' && vsDualDrop && typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopInput({ action: 'p1Rotate', val: dir });
+    }
+  }
+
+  function executeRotatePiece(dir) {
+    if (!activePiece) return false;
+    if (SPECIAL_PIECES.includes(activePiece.type) && !activePiece.type.includes('_')) return false;
     const oldRot = activePiece.rot;
     const newRot = (oldRot + dir + 4) % 4;
     const type = getBasePieceType(activePiece.type);
@@ -2327,7 +2467,7 @@ function spawnRowParticles(fullRowIndices) {
       resetLockDelayIfAllowed();
       visualPiece.squashX = 1.06; visualPiece.squashY = 1.06;
       audioMgr.playRotate();
-      return;
+      return true;
     }
 
     if (gameMode === 'Classic') {
@@ -2335,8 +2475,9 @@ function spawnRowParticles(fullRowIndices) {
         activePiece.rot = newRot;
         visualPiece.squashX = 1.06; visualPiece.squashY = 1.06;
         audioMgr.playRotate();
+        return true;
       }
-      return;
+      return false;
     }
 
     const key = `${oldRot}->${newRot}`;
@@ -2350,10 +2491,43 @@ function spawnRowParticles(fullRowIndices) {
         resetLockDelayIfAllowed();
         visualPiece.squashX = 1.06; visualPiece.squashY = 1.06;
         audioMgr.playRotate();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function rotateDualPiece(dir) {
+    if (!dualActivePiece) return;
+    executeRotateDualPiece(dir);
+    if (typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopInput({ action: 'p2Rotate', val: dir });
+    }
+  }
+
+  function executeRotateDualPiece(dir) {
+    if (!dualActivePiece) return;
+    const oldRot = dualActivePiece.rot;
+    const newRot = (oldRot + dir + 4) % 4;
+    const type = getBasePieceType(dualActivePiece.type);
+    if (type === 'O') {
+      dualActivePiece.rot = newRot;
+      audioMgr.playRotate();
+      return;
+    }
+    const key = `${oldRot}->${newRot}`;
+    const kickTable = (type === 'I') ? WALL_KICKS_I[key] : WALL_KICKS_JLSTZ[key];
+    for (const [dx, dy] of kickTable) {
+      if (!checkCollision(dualActivePiece.x + dx, dualActivePiece.y + dy, newRot, dualActivePiece.type)) {
+        dualActivePiece.x += dx;
+        dualActivePiece.y += dy;
+        dualActivePiece.rot = newRot;
+        audioMgr.playRotate();
         return;
       }
     }
   }
+
   function getGhostY() {
     if (!activePiece) return 0;
     let gy = activePiece.y;
@@ -2361,8 +2535,36 @@ function spawnRowParticles(fullRowIndices) {
     return gy;
   }
 
+  function getDualGhostY() {
+    if (!dualActivePiece) return 0;
+    let gy = dualActivePiece.y;
+    while (!checkCollision(dualActivePiece.x, gy + 1, dualActivePiece.rot, dualActivePiece.type)) gy++;
+    return gy;
+  }
+
   function softDropStep() {
-    if (gameState !== 'PLAYING' || !activePiece) return false;
+    if (gameState !== 'PLAYING') return false;
+
+    if (gameMode === 'Versus' && vsDualDrop) {
+      const isHost = typeof lobbyMgr !== 'undefined' && lobbyMgr.isHost;
+      if (!isHost) {
+        return softDropDualStep();
+      }
+    }
+
+    if (!canLocalPlayerAim()) {
+      return false;
+    }
+
+    const res = executeSoftDropStep();
+    if (res && gameMode === 'Versus' && vsSplitRole && typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopInput({ action: 'softDrop' });
+    }
+    return res;
+  }
+
+  function executeSoftDropStep() {
+    if (!activePiece) return false;
     if (!checkCollision(activePiece.x, activePiece.y + 1, activePiece.rot)) {
       activePiece.y++;
       score += 1;
@@ -2374,8 +2576,68 @@ function spawnRowParticles(fullRowIndices) {
     return false;
   }
 
+  function softDropDualStep() {
+    if (!dualActivePiece) return false;
+    if (!checkCollision(dualActivePiece.x, dualActivePiece.y + 1, dualActivePiece.rot, dualActivePiece.type)) {
+      dualActivePiece.y++;
+      score += 1;
+      updateScoreUI();
+      audioMgr.playSoft();
+      if (typeof lobbyMgr !== 'undefined') {
+        lobbyMgr.sendCoopInput({ action: 'p2SoftDrop' });
+      }
+      return true;
+    }
+    return false;
+  }
+
   function hardDrop() {
-    if (gameState !== 'PLAYING' || !activePiece || gameMode === 'Classic') return;
+    if (gameState !== 'PLAYING') return;
+
+    if (gameMode === 'Versus' && vsDualDrop) {
+      const isHost = typeof lobbyMgr !== 'undefined' && lobbyMgr.isHost;
+      if (!isHost) {
+        hardDropDual();
+        return;
+      }
+    }
+
+    if (!canLocalPlayerAim()) {
+      floatingTexts.push(new FloatingText('คุณคือคนหมุน! ให้คู่หูเป็นคนทิ้งบล็อก 🎯', (COLS * cellSize) / 2, 120, '#38bdf8', 16));
+      return;
+    }
+
+    executeHardDrop();
+    if (gameMode === 'Versus' && vsSplitRole && typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopInput({ action: 'hardDrop' });
+    } else if (gameMode === 'Versus' && vsDualDrop && typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopInput({ action: 'p1HardDrop' });
+    }
+  }
+
+  function hardDropDual() {
+    if (!dualActivePiece) return;
+    executeDualHardDrop();
+    if (typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopInput({ action: 'p2HardDrop' });
+    }
+  }
+
+  function executeDualHardDrop() {
+    if (!dualActivePiece) return;
+    const ghostY = getDualGhostY();
+    const dropDistance = Math.max(0, ghostY - dualActivePiece.y);
+    score += dropDistance * 2;
+    dualActivePiece.y = ghostY;
+    updateScoreUI();
+    triggerLandingSquash(0.72);
+    triggerShake(2.5, 100);
+    audioMgr.playHardDrop();
+    lockDualPiece();
+  }
+
+  function executeHardDrop() {
+    if (!activePiece || gameMode === 'Classic') return;
     const ghostY = getGhostY();
     const dropDistance = Math.max(0, ghostY - activePiece.y);
     score += dropDistance * 2;
@@ -2393,9 +2655,23 @@ function spawnRowParticles(fullRowIndices) {
   }
 
   function holdCurrentPiece() {
-    if (gameState !== 'PLAYING' || !activePiece || !canHold || gameMode === 'Classic') return;
-    if (SPECIAL_PIECES.includes(activePiece.type) && !activePiece.type.includes('_')) return;
-    audioMgr.playHold();audioMgr.playHold();
+    if (gameState !== 'PLAYING') return;
+
+    if (!canLocalPlayerRotate()) {
+      floatingTexts.push(new FloatingText('คุณคือคนเล็ง! ให้คู่หูเป็นคน Hold 🔄', (COLS * cellSize) / 2, 120, '#c084fc', 16));
+      return;
+    }
+
+    const res = executeHoldCurrentPiece();
+    if (res && gameMode === 'Versus' && vsSplitRole && typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopInput({ action: 'hold' });
+    }
+  }
+
+  function executeHoldCurrentPiece() {
+    if (!activePiece || !canHold || gameMode === 'Classic') return false;
+    if (SPECIAL_PIECES.includes(activePiece.type) && !activePiece.type.includes('_')) return false;
+    audioMgr.playHold();
     const currentType = activePiece.type;
     if (holdPieceType === null) {
       holdPieceType = currentType;
@@ -2407,6 +2683,7 @@ function spawnRowParticles(fullRowIndices) {
     }
     canHold = false;
     snapVisualPieceToActive();
+    return true;
   }
 
   function checkTensionState() {
@@ -2459,126 +2736,177 @@ function spawnRowParticles(fullRowIndices) {
       coreC = mid.c;
     }
 
-    // 1. บล็อกระเบิด (BOMB 3x3)
-    if (specType === 'BOMB' || pType === 'BOMB') {
-      activePiece = null;
-      for (const cell of placedCells) {
-        if (cell.r >= 0 && cell.r < TOTAL_ROWS && cell.c >= 0 && cell.c < COLS) {
-          board[cell.r][cell.c] = baseType;
-        }
-      }
-
-      let destroyedCount = 0;
-      const destroyedCells = [];
-      for (let r = coreR - 1; r <= coreR + 1; r++) {
-        for (let c = coreC - 1; c <= coreC + 1; c++) {
-          if (r >= 0 && r < TOTAL_ROWS && c >= 0 && c < COLS) {
-            if (board[r][c] !== null) {
-              destroyedCount++;
-              destroyedCells.push({ r, c, type: board[r][c] });
-              board[r][c] = null;
-            }
-          }
-        }
-      }
-
-      score += destroyedCount * 15;
-      updateScoreUI();
-      if (destroyedCount >= 6) unlockAchievement('demolition_crew');
-
-      const bombVisY = coreR - HIDDEN_ROWS;
-      const pX = (coreC + 0.5) * cellSize;
-      const pY = (bombVisY + 0.5) * cellSize;
-
-      triggerShake(10, 320);
-      shockwaves.push(new Shockwave(pX, pY, cellSize * 4.0));
-      spawnBombParticles(pX, pY, destroyedCells);
-      audioMgr.playBomb();
-
-      // Gravity หลังระเบิด
-      for (let c = 0; c < COLS; c++) {
-        const colBlocks = [];
-        for (let r = 0; r < TOTAL_ROWS; r++) {
-          if (board[r][c] !== null) colBlocks.push(board[r][c]);
-        }
-        for (let r = TOTAL_ROWS - 1; r >= 0; r--) {
-          board[r][c] = colBlocks.length > 0 ? colBlocks.pop() : null;
-        }
-      }
-
-      checkTensionState();
-      checkFullRowsAfterSpecial();
-      return;
-    }
-
-    // 2. บล็อกสายฟ้า (LASER Beam Zap)
-    if (specType === 'LASER' || pType === 'LASER') {
-      activePiece = null;
-      for (const cell of placedCells) {
-        if (cell.r >= 0 && cell.r < TOTAL_ROWS && cell.c >= 0 && cell.c < COLS) {
-          board[cell.r][cell.c] = baseType;
-        }
-      }
-
-      let destroyedCount = 0;
-      for (let c = 0; c < COLS; c++) {
-        if (board[coreR][c] !== null) destroyedCount++;
-        board[coreR][c] = null;
-      }
-      score += Math.max(20, destroyedCount * 15);
-      updateScoreUI();
-
-      laserBeamRow = coreR - HIDDEN_ROWS;
-      laserBeamTimer = 220;
-
-      triggerShake(6, 220);
-      spawnLaserParticles(laserBeamRow);
-      audioMgr.playLaser();
-      unlockAchievement('laser_strike');
-
-      // Gravity หลังยิงเลเซอร์
-      for (let c = 0; c < COLS; c++) {
-        const colBlocks = [];
-        for (let r = 0; r < TOTAL_ROWS; r++) {
-          if (board[r][c] !== null) colBlocks.push(board[r][c]);
-        }
-        for (let r = TOTAL_ROWS - 1; r >= 0; r--) {
-          board[r][c] = colBlocks.length > 0 ? colBlocks.pop() : null;
-        }
-      }
-
-      checkTensionState();
-      checkFullRowsAfterSpecial();
-      return;
-    }
-
-    // 3. บล็อกพายุหลุมดำ (VORTEX)
-    if (specType === 'VORTEX' || pType === 'VORTEX') {
-      activePiece = null;
-      for (const cell of placedCells) {
-        if (cell.r >= 0 && cell.r < TOTAL_ROWS && cell.c >= 0 && cell.c < COLS) {
-          board[cell.r][cell.c] = baseType;
-        }
-      }
-      triggerVortexEffect(coreR, coreC);
-      return;
-    }
-
-    // 4. บล็อกทองคำ (GOLD) หรือ บล็อกปกติ
-    const fillType = (specType === 'GOLD') ? 'GOLD' : baseType;
+    // วางชิ้นส่วนลงในกระดาน
+    // หากเป็นบล็อกพิเศษ (BOMB, LASER, VORTEX, GOLD) บล็อกแกนกลางจะคงสถานะพิเศษไว้
+    // และจะแสดงผลเอฟเฟกต์ทำลายล้างเมื่อผู้เล่นเรียงเต็มแถวจนเกิดการทำลายแถวนั้นได้สำเร็จเท่านั้น!
     for (const cell of placedCells) {
       if (cell.r >= 0 && cell.r < TOTAL_ROWS && cell.c >= 0 && cell.c < COLS) {
-        board[cell.r][cell.c] = fillType;
+        const isCore = (specType && cell.r === coreR && cell.c === coreC);
+        board[cell.r][cell.c] = isCore ? specType : baseType;
       }
-    }
-    if (specType === 'GOLD') {
-      score += 250;
-      updateScoreUI();
     }
 
     audioMgr.playLock();
     activePiece = null;
+
+    if (gameMode === 'Versus' && (vsSplitRole || vsDualDrop) && typeof lobbyMgr !== 'undefined' && lobbyMgr.isHost) {
+      lobbyMgr.sendCoopStateSync({ board, activePiece: null, dualPiece: dualActivePiece, score, lines, level });
+    }
+
     checkNormalLockOutcome();
+  }
+
+  function spawnDualPiece(type) {
+    if (!type) type = pullNextType() || 'I';
+    const base = getBasePieceType(type);
+    const matrix = (SHAPES[base] || SHAPES[type] || SHAPES.T)[0];
+    const size = matrix.length;
+    dualActivePiece = {
+      type,
+      rot: 0,
+      x: Math.min(COLS - size, 6),
+      y: 0,
+      lowestY: 0
+    };
+    dualLockTimer = 0;
+    dualLockResets = 0;
+    dualIsGrounded = false;
+    dualDropAccumulator = 0;
+  }
+
+  function lockDualPiece() {
+    if (!dualActivePiece) return;
+    const pType = dualActivePiece.type;
+    const baseType = getBasePieceType(pType);
+    const specType = getSpecialPieceType(pType);
+    const shapeVariants = SHAPES[baseType] || SHAPES[pType] || SHAPES.T;
+    const matrix = shapeVariants[dualActivePiece.rot % shapeVariants.length];
+
+    let coreR = dualActivePiece.y;
+    let coreC = dualActivePiece.x;
+    let foundCore = false;
+    const placedCells = [];
+
+    for (let r = 0; r < matrix.length; r++) {
+      for (let c = 0; c < matrix[r].length; c++) {
+        if (matrix[r][c]) {
+          const bx = dualActivePiece.x + c;
+          const by = dualActivePiece.y + r;
+          placedCells.push({ r: by, c: bx });
+          if (!foundCore) {
+            coreR = by;
+            coreC = bx;
+            if (r === 1 && c === 1) foundCore = true;
+          }
+        }
+      }
+    }
+    if (placedCells.length > 0 && !foundCore) {
+      const mid = placedCells[Math.floor(placedCells.length / 2)];
+      coreR = mid.r;
+      coreC = mid.c;
+    }
+
+    for (const cell of placedCells) {
+      if (cell.r >= 0 && cell.r < TOTAL_ROWS && cell.c >= 0 && cell.c < COLS) {
+        const isCore = (specType && cell.r === coreR && cell.c === coreC);
+        board[cell.r][cell.c] = isCore ? specType : baseType;
+      }
+    }
+
+    audioMgr.playLock();
+    dualActivePiece = null;
+
+    if (gameMode === 'Versus' && (vsSplitRole || vsDualDrop) && typeof lobbyMgr !== 'undefined') {
+      lobbyMgr.sendCoopStateSync({ board, activePiece, dualPiece: null, score, lines, level });
+    }
+
+    checkNormalLockOutcome();
+    if (gameState === 'PLAYING') {
+      spawnDualPiece();
+    }
+  }
+
+  // ==========================================
+  // ทริกเกอร์บล็อกพิเศษเมื่อเรียงเต็มแถวและทำลายแถวสำเร็จ (Line Clear Special Triggers)
+  // ==========================================
+  function triggerSpecialBlocksInClearingRows(rows) {
+    if (!rows || rows.length === 0) return;
+
+    const activatedSpecials = [];
+    rows.forEach(r => {
+      for (let c = 0; c < COLS; c++) {
+        const cell = board[r][c];
+        if (cell === 'BOMB' || cell === 'LASER' || cell === 'VORTEX' || cell === 'GOLD') {
+          activatedSpecials.push({ type: cell, r, c });
+        }
+      }
+    });
+
+    if (activatedSpecials.length === 0) return;
+
+    activatedSpecials.forEach(spec => {
+      if (spec.type === 'BOMB') {
+        // ระเบิดพื้นที่ 3x3 รอบจุดศูนย์กลาง
+        let destroyedCount = 0;
+        const destroyedCells = [];
+        for (let rr = spec.r - 1; rr <= spec.r + 1; rr++) {
+          for (let cc = spec.c - 1; cc <= spec.c + 1; cc++) {
+            if (rr >= 0 && rr < TOTAL_ROWS && cc >= 0 && cc < COLS) {
+              if (board[rr][cc] !== null && !rows.includes(rr)) {
+                destroyedCount++;
+                destroyedCells.push({ r: rr, c: cc, type: board[rr][cc] });
+                board[rr][cc] = null;
+              }
+            }
+          }
+        }
+        score += Math.max(50, destroyedCount * 25);
+        const pX = (spec.c + 0.5) * cellSize;
+        const pY = (spec.r - HIDDEN_ROWS + 0.5) * cellSize;
+        triggerShake(10, 320);
+        shockwaves.push(new Shockwave(pX, pY, cellSize * 4.0));
+        spawnBombParticles(pX, pY, destroyedCells);
+        audioMgr.playBomb();
+        floatingTexts.push(new FloatingText('💥 BOMB BLAST!', pX, pY, '#ef4444', 20));
+      } else if (spec.type === 'LASER') {
+        // ยิงลำแสงเลเซอร์ทำลายบล็อกในแถวต่อเนื่อง
+        laserBeamRow = spec.r - HIDDEN_ROWS;
+        laserBeamTimer = 220;
+        triggerShake(6, 220);
+        spawnLaserParticles(laserBeamRow);
+        audioMgr.playLaser();
+        score += 200;
+        floatingTexts.push(new FloatingText('⚡ LASER ZAP!', (COLS * cellSize) / 2, (laserBeamRow + 0.5) * cellSize, '#00e5ff', 20));
+      } else if (spec.type === 'VORTEX') {
+        // ดูดและล้าง 2 แถวล่างสุด
+        triggerVortexEffect(spec.r, spec.c);
+        score += 250;
+        floatingTexts.push(new FloatingText('🌀 VORTEX DRAIN!', (COLS * cellSize) / 2, 100, '#c084fc', 20));
+      } else if (spec.type === 'GOLD') {
+        // โบนัสคะแนนมหาศาล
+        score += 500;
+        spawnGoldParticles(spec.r - HIDDEN_ROWS);
+        audioMgr.playGold();
+        unlockAchievement('gold_digger');
+        floatingTexts.push(new FloatingText('+500 GOLD! 🪙', (spec.c + 0.5) * cellSize, (spec.r - HIDDEN_ROWS + 0.5) * cellSize, '#ffd700', 20));
+      }
+    });
+
+    if (gameMode === 'Versus' && typeof lobbyMgr !== 'undefined') {
+      let specGarbage = 0;
+      activatedSpecials.forEach(s => {
+        if (s.type === 'BOMB') specGarbage += 2;
+        else if (s.type === 'LASER') specGarbage += 2;
+        else if (s.type === 'VORTEX') specGarbage += 3;
+      });
+      if (specGarbage > 0) {
+        lobbyMgr.sendGarbage(specGarbage);
+        floatingTexts.push(new FloatingText('SPECIAL ATTACK +' + specGarbage + '! ⚡', (COLS * cellSize) / 2, 40, '#f59e0b', 22));
+      }
+    }
+
+    updateScoreUI();
   }
 
   function checkFullRowsAfterSpecial() {
@@ -2765,23 +3093,9 @@ function spawnRowParticles(fullRowIndices) {
       baseScore = ([0, 100, 300, 500, 800][count] || 800) * level;
     }
 
-    // ตรวจสอบว่าแถวที่ถูกล้างมีบล็อกทองคำ (GOLD) หรือไม่
-    let goldCount = 0;
+    // ตรวจสอบและทริกเกอร์บล็อกพิเศษ (BOMB, LASER, VORTEX, GOLD) เมื่อทำลายแถวสำเร็จ!
     if (!isClassic) {
-      clearingRows.forEach(r => {
-        for (let c = 0; c < COLS; c++) {
-          if (board[r][c] === 'GOLD') {
-            goldCount++;
-            spawnGoldParticles(r - HIDDEN_ROWS);
-          }
-        }
-      });
-
-      if (goldCount > 0) {
-        baseScore += goldCount * 1000;
-        audioMgr.playGold();
-        unlockAchievement('gold_digger');
-      }
+      triggerSpecialBlocksInClearingRows(clearingRows);
 
       if (!isBombChainClear && comboCount > 0) {
         baseScore += 50 * comboCount * level;
@@ -4026,6 +4340,58 @@ const BLOCK_SKINS = [
         }
       }
       boardCtx.restore();
+
+      // วาดป้าย P1 เหนือ activePiece เมื่ออยู่ในโหมด Dual Drop
+      if (gameMode === 'Versus' && vsDualDrop && activePiece) {
+        const p1X = (visualPiece.x + matrix[0].length * 0.5) * cellSize;
+        const p1Y = (visualPiece.y - HIDDEN_ROWS) * cellSize - 7;
+        boardCtx.save();
+        boardCtx.font = '800 12px "Prompt", sans-serif';
+        boardCtx.fillStyle = '#38bdf8';
+        boardCtx.textAlign = 'center';
+        boardCtx.shadowColor = 'rgba(56, 189, 248, 0.9)';
+        boardCtx.shadowBlur = 8;
+        boardCtx.fillText('👑 P1', p1X, Math.max(14, p1Y));
+        boardCtx.restore();
+      }
+    }
+
+    // วาดชิ้นส่วนที่ 2 (dualActivePiece) ในโหมด Dual Drop
+    if (gameMode === 'Versus' && vsDualDrop && dualActivePiece) {
+      const dBaseType = getBasePieceType(dualActivePiece.type);
+      const dShapeVariants = SHAPES[dBaseType] || SHAPES[dualActivePiece.type] || SHAPES.T;
+      const dMatrix = dShapeVariants[dualActivePiece.rot % dShapeVariants.length];
+      const dGhostY = getDualGhostY();
+
+      // Ghost สำหรับชิ้นที่ 2
+      for (let r = 0; r < dMatrix.length; r++) {
+        for (let c = 0; c < dMatrix[r].length; c++) {
+          if (dMatrix[r][c] && dGhostY + r - HIDDEN_ROWS >= 0) {
+            drawGhostBlock(boardCtx, (dualActivePiece.x + c) * cellSize, (dGhostY + r - HIDDEN_ROWS) * cellSize, cellSize, dBaseType);
+          }
+        }
+      }
+
+      // ตัวชิ้นที่ 2
+      for (let r = 0; r < dMatrix.length; r++) {
+        for (let c = 0; c < dMatrix[r].length; c++) {
+          if (dMatrix[r][c] && dualActivePiece.y + r - HIDDEN_ROWS >= -1) {
+            drawWoodenBlock(boardCtx, (dualActivePiece.x + c) * cellSize, (dualActivePiece.y + r - HIDDEN_ROWS) * cellSize, cellSize, dBaseType, true, 1);
+          }
+        }
+      }
+
+      // วาดป้าย P2 เหนือ dualActivePiece
+      const p2X = (dualActivePiece.x + dMatrix[0].length * 0.5) * cellSize;
+      const p2Y = (dualActivePiece.y - HIDDEN_ROWS) * cellSize - 7;
+      boardCtx.save();
+      boardCtx.font = '800 12px "Prompt", sans-serif';
+      boardCtx.fillStyle = '#f43f5e';
+      boardCtx.textAlign = 'center';
+      boardCtx.shadowColor = 'rgba(244, 63, 94, 0.9)';
+      boardCtx.shadowBlur = 8;
+      boardCtx.fillText('👤 P2', p2X, Math.max(14, p2Y));
+      boardCtx.restore();
     }
 
     shockwaves.forEach(sw => sw.draw(boardCtx));
@@ -4334,6 +4700,30 @@ const BLOCK_SKINS = [
     } else {
       isGrounded = false;
       lockTimer = 0;
+    }
+
+    // ฟิสิกส์การตกและล็อกของชิ้นส่วนที่ 2 (dualActivePiece) ในโหมด Dual Drop
+    if (gameMode === 'Versus' && vsDualDrop && dualActivePiece) {
+      dualDropAccumulator += dt;
+      while (dualDropAccumulator >= dropInterval) {
+        dualDropAccumulator -= dropInterval;
+        if (!checkCollision(dualActivePiece.x, dualActivePiece.y + 1, dualActivePiece.rot, dualActivePiece.type)) {
+          dualActivePiece.y++;
+          dualIsGrounded = false;
+          dualLockTimer = 0;
+        } else {
+          dualIsGrounded = true;
+        }
+      }
+
+      if (checkCollision(dualActivePiece.x, dualActivePiece.y + 1, dualActivePiece.rot, dualActivePiece.type)) {
+        dualIsGrounded = true;
+        dualLockTimer += dt;
+        if (dualLockTimer >= LOCK_DELAY_MODERN_MS) lockDualPiece();
+      } else {
+        dualIsGrounded = false;
+        dualLockTimer = 0;
+      }
     }
 
     // อัปเดตพิกัดตกและเคลื่อนที่แบบสมูทต่อเนื่อง (Smooth Sub-pixel Falling Physics)
@@ -5645,6 +6035,10 @@ const BLOCK_SKINS = [
         this.handleRematchAccepted(msg);
       } else if (msg.type === 'OPPONENT_WANTS_REMATCH') {
         this.showOpponentWantsRematch(msg.requesterName || 'คู่ต่อสู้');
+      } else if (msg.type === 'COOP_INPUT') {
+        handleCoopRemoteInput(msg);
+      } else if (msg.type === 'COOP_STATE_SYNC') {
+        handleCoopRemoteStateSync(msg);
       } else if (msg.type === 'REMATCH_REJECTED') {
         const btnRematch = document.getElementById('btnVsRematch');
         if (btnRematch) {
@@ -5715,6 +6109,10 @@ const BLOCK_SKINS = [
         receiveOpponentGarbage(msg.lines || 1);
       } else if (msg.type === 'PLAYER_TOP_OUT') {
         this.handleOpponentTopOut();
+      } else if (msg.type === 'COOP_INPUT') {
+        handleCoopRemoteInput(msg);
+      } else if (msg.type === 'COOP_STATE_SYNC') {
+        handleCoopRemoteStateSync(msg);
       } else if (msg.type === 'REQUEST_REMATCH') {
         this.resetToWaitingRoom();
       }
@@ -5780,6 +6178,11 @@ const BLOCK_SKINS = [
       const rds = rounds || 2;
       const sub = this.selectedSubMode || 'Modern';
 
+      const chkSplit = document.getElementById('chkSplitRole');
+      const chkDual = document.getElementById('chkDualDrop');
+      const splitRole = chkSplit ? chkSplit.checked : false;
+      const dualDrop = chkDual ? chkDual.checked : false;
+
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({
           type: 'CREATE_ROOM',
@@ -5787,6 +6190,8 @@ const BLOCK_SKINS = [
           password: roomPass,
           rounds: rds,
           subMode: sub,
+          splitRole: splitRole,
+          dualDrop: dualDrop,
           hostName: myName
         }));
       } else {
@@ -5891,6 +6296,8 @@ const BLOCK_SKINS = [
       holdPieceType = null;
       canHold = true;
       activePiece = null;
+      dualActivePiece = null;
+      updateCoopRoleUI();
 
       updateScoreUI();
       updateComboUI();
@@ -6036,6 +6443,22 @@ const BLOCK_SKINS = [
         subBadge.textContent = smNames[r.subMode || 'Modern'] || r.subMode;
       }
 
+      const modBadge = document.getElementById('waitRoomModifierBadge');
+      if (modBadge) {
+        if (r.splitRole && r.dualDrop) {
+          modBadge.textContent = '🎭 แบ่งหน้าที่ + บล็อก 2 ชิ้น';
+          modBadge.classList.remove('hidden');
+        } else if (r.splitRole) {
+          modBadge.textContent = '🎯 แบ่งหน้าที่ (Aim & Rotate)';
+          modBadge.classList.remove('hidden');
+        } else if (r.dualDrop) {
+          modBadge.textContent = '👥 บล็อกลง 2 ชิ้น (Dual Drop)';
+          modBadge.classList.remove('hidden');
+        } else {
+          modBadge.classList.add('hidden');
+        }
+      }
+
       const hostName = document.getElementById('waitHostName');
       if (hostName) hostName.textContent = r.hostName || 'Player 1';
 
@@ -6148,6 +6571,10 @@ const BLOCK_SKINS = [
         titleEl.textContent = (this.targetWins === 1) ? 'BEST OF 1' : ((this.targetWins === 3) ? 'BEST OF 5' : 'BEST OF 3');
       }
 
+      vsSplitRole = !!(msg.splitRole || (this.currentRoom && this.currentRoom.splitRole));
+      vsDualDrop = !!(msg.dualDrop || (this.currentRoom && this.currentRoom.dualDrop));
+      updateCoopRoleUI();
+
       this.startNewVsRound();
     }
 
@@ -6189,7 +6616,13 @@ const BLOCK_SKINS = [
         initBlockBlastGame();
       } else {
         startNewGame();
+        if (vsDualDrop) {
+          spawnDualPiece();
+        } else {
+          dualActivePiece = null;
+        }
       }
+      updateCoopRoleUI();
     }
 
     updateStarsUI() {
@@ -6218,6 +6651,22 @@ const BLOCK_SKINS = [
         this.ws.send(JSON.stringify({ type: 'SEND_GARBAGE', lines: lineCount }));
       } else {
         this.broadcast('RECEIVE_GARBAGE', { lines: lineCount });
+      }
+    }
+
+    sendCoopInput(data) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'COOP_INPUT', ...data }));
+      } else {
+        this.broadcast('COOP_INPUT', data);
+      }
+    }
+
+    sendCoopStateSync(data) {
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'COOP_STATE_SYNC', ...data }));
+      } else {
+        this.broadcast('COOP_STATE_SYNC', data);
       }
     }
 
@@ -6322,6 +6771,17 @@ const BLOCK_SKINS = [
       const p1Lines = document.getElementById('vsStatLinesP1');
       const p2Lines = document.getElementById('vsStatLinesP2');
 
+      if (vsSplitRole || vsDualDrop) {
+        if (titleEl) titleEl.textContent = '🤝 GAME OVER (CO-OP)';
+        if (subEl) subEl.textContent = `คะแนนรวมของทีม: ${score.toLocaleString()} แต้ม | ช่วยกันล้างไปได้ ${lines} แถว!`;
+        if (sumP1) sumP1.textContent = String(lines);
+        if (sumP2) sumP2.textContent = String(score);
+        if (p1Lines) p1Lines.textContent = String(lines);
+        if (p2Lines) p2Lines.textContent = String(score);
+        if (overlay) overlay.classList.remove('hidden');
+        return;
+      }
+
       if (titleEl) titleEl.textContent = isMe ? '🏆 YOU WIN!' : (winnerName + ' WINS!');
       if (subEl) subEl.textContent = isMe ? 'ยินดีด้วย! คุณคว้าชัยชนะในแมตช์นี้' : (winnerName + ' คว้าชัยชนะในแมตช์นี้');
 
@@ -6397,6 +6857,10 @@ const BLOCK_SKINS = [
         const btnText = isPlaying ? '⚔️ กำลังแข่งขัน' : (isFull ? '🔒 เต็มแล้ว (2/2)' : '🎮 เข้าร่วม');
         const playerBadge = isFull ? '👥 2/2' : '👥 1/2';
 
+        let modTags = '';
+        if (room.splitRole) modTags += '<span class="meta-chip modifier-chip" style="padding:2px 6px; font-size:0.7rem;">🎯 แบ่งหน้าที่</span>';
+        if (room.dualDrop) modTags += '<span class="meta-chip modifier-chip" style="padding:2px 6px; font-size:0.7rem;">👥 บล็อก 2 ชิ้น</span>';
+
         card.innerHTML = `
           <div class="room-card-info">
             <div class="room-card-title">${escapeHtml(room.name)} <span style="font-size:0.75rem; font-weight:normal; opacity:0.65;">#${escapeHtml(room.id)}</span></div>
@@ -6406,6 +6870,7 @@ const BLOCK_SKINS = [
               <span class="meta-chip" style="padding:2px 7px; font-size:0.7rem; background:rgba(56,189,248,0.15); color:#38bdf8;">${modeTag}</span>
               <span class="meta-chip" style="padding:2px 6px; font-size:0.7rem;">${formatText}</span>
               <span class="meta-chip" style="padding:2px 6px; font-size:0.7rem; color:#a7f3d0;">${playerBadge}</span>
+              ${modTags}
             </div>
           </div>
           <button type="button" class="btn-lobby-accent btn-join-action" data-room-id="${room.id}" ${isFull ? 'disabled' : ''}>
@@ -6593,16 +7058,8 @@ const BLOCK_SKINS = [
   }
 
   function togglePause() {
-    if (gameMode === 'Versus' && typeof versusManager !== 'undefined') {
-      if (versusManager.state === 'PLAYING') {
-        versusManager.state = 'PAUSED';
-        audioMgr.pauseBgm();
-        document.getElementById('pauseOverlay').classList.remove('hidden');
-      } else if (versusManager.state === 'PAUSED') {
-        versusManager.state = 'PLAYING';
-        audioMgr.resumeBgm();
-        document.getElementById('pauseOverlay').classList.add('hidden');
-      }
+    if (gameMode === 'Versus') {
+      showCustomAlert('⏸ ไม่สามารถหยุดเกมได้', 'ไม่สามารถหยุดเกมชั่วคราวขณะแข่งขันออนไลน์แบบ Real-time ได้', '⚠️');
       return;
     }
 
@@ -7166,7 +7623,13 @@ const BLOCK_SKINS = [
     openStartMenu();
   });
   safeOn('btnPause', 'click', () => togglePause());
-  safeOn('btnRestartTop', 'click', () => startNewGame());
+  safeOn('btnRestartTop', 'click', () => {
+    if (gameMode === 'Versus') {
+      showCustomAlert('🔄 ไม่สามารถเริ่มใหม่ได้', 'กำลังแข่งขันออนไลน์อยู่ หากต้องการเริ่มใหม่กรุณารอจบแมตช์หรือกดออกจากห้อง', '⚠️');
+      return;
+    }
+    startNewGame();
+  });
 
   safeOn('btnSound', 'click', () => openSettingsModal());
   safeOn('btnSettingsFromPause', 'click', () => openSettingsModal());
