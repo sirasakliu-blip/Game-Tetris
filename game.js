@@ -2383,6 +2383,14 @@ function spawnRowParticles(fullRowIndices) {
     }
   }
 
+  let lastCoopRoleWarnTime = 0;
+  function showCoopRoleWarning(text, color) {
+    const now = Date.now();
+    if (now - lastCoopRoleWarnTime < 1400) return;
+    lastCoopRoleWarnTime = now;
+    floatingTexts.push(new FloatingText(text, (COLS * cellSize) / 2, 120, color, 16));
+  }
+
   function moveHorizontal(dir) {
     if (gameState !== 'PLAYING') return false;
 
@@ -2394,7 +2402,7 @@ function spawnRowParticles(fullRowIndices) {
     }
 
     if (!canLocalPlayerAim()) {
-      floatingTexts.push(new FloatingText('คุณคือคนหมุน! ให้คู่หูเป็นคนเล็ง 🎯', (COLS * cellSize) / 2, 120, '#38bdf8', 16));
+      showCoopRoleWarning('คุณคือคนหมุน! ให้คู่หูเป็นคนเล็ง 🎯', '#38bdf8');
       return false;
     }
 
@@ -7728,10 +7736,21 @@ const BLOCK_SKINS = [
       });
     }
 
-    // ปุ่มเชื่อมต่อเซิร์ฟเวอร์ใหม่
-    safeOn('btnReconnectWs', 'click', () => {
-      lobbyMgr.connectWebSocket(lobbyMgr.renderUrl);
-    });
+    // ฟังก์ชันเสริม: ให้เลือกได้แค่อย่างใดอย่างหนึ่ง (Mutually Exclusive)
+    const chkSplit = document.getElementById('chkSplitRole');
+    const chkDual = document.getElementById('chkDualDrop');
+    if (chkSplit && chkDual) {
+      chkSplit.addEventListener('change', () => {
+        if (chkSplit.checked) {
+          chkDual.checked = false;
+        }
+      });
+      chkDual.addEventListener('change', () => {
+        if (chkDual.checked) {
+          chkSplit.checked = false;
+        }
+      });
+    }
 
     safeOn('btnToggleRoomPass', 'click', () => {
       const input = document.getElementById('inputRoomPass');
