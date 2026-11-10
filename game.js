@@ -5225,6 +5225,42 @@ const BLOCK_SKINS = [
     if (modal) modal.classList.add('hidden');
   }
 
+  function showCountdownAndStart(onComplete) {
+    const overlay = document.getElementById('vsCountdownOverlay');
+    const textEl = document.getElementById('vsCountdownText');
+    if (!overlay || !textEl) {
+      if (onComplete) onComplete();
+      return;
+    }
+
+    overlay.classList.remove('hidden');
+    textEl.textContent = '3';
+    textEl.style.color = '#f59e0b';
+    audioMgr.playMove();
+
+    setTimeout(() => {
+      textEl.textContent = '2';
+      audioMgr.playMove();
+    }, 1000);
+
+    setTimeout(() => {
+      textEl.textContent = '1';
+      audioMgr.playMove();
+    }, 2000);
+
+    setTimeout(() => {
+      textEl.textContent = 'START!';
+      textEl.style.color = '#10b981';
+      audioMgr.playHardDrop();
+    }, 3000);
+
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      textEl.style.color = '#f59e0b';
+      if (onComplete) onComplete();
+    }, 3500);
+  }
+
   class MultiplayerLobbyManager {
     constructor() {
       this.currentRoom = null;
@@ -5581,15 +5617,26 @@ const BLOCK_SKINS = [
       } else if (msg.type === 'MATCH_OVER') {
         this.handleMatchOverServer(msg);
       } else if (msg.type === 'REMATCH_ACCEPTED') {
-        this.currentRoom = msg.room;
-        this.isHost = msg.room.isHost;
-        this.resetToWaitingRoom();
+        if (msg.room) {
+          this.currentRoom = { ...this.currentRoom, ...msg.room };
+          this.isHost = msg.room.isHost;
+        }
+        this.handleRematchAccepted(msg);
       } else if (msg.type === 'OPPONENT_WANTS_REMATCH') {
+        this.showOpponentWantsRematch(msg.requesterName || 'คู่ต่อสู้');
+      } else if (msg.type === 'REMATCH_REJECTED') {
+        const btnRematch = document.getElementById('btnVsRematch');
+        if (btnRematch) {
+          btnRematch.disabled = false;
+          btnRematch.textContent = '🔄 แข่งขันอีกรอบ (Rematch)';
+          btnRematch.classList.remove('btn-pulse');
+        }
         const subEl = document.getElementById('vsWinnerSubtitle');
         if (subEl) {
-          subEl.textContent = `⚡ ${msg.requesterName || 'คู่ต่อสู้'} ต้องการแข่งขันอีกรอบ! กดปุ่ม "แข่งขันอีกรอบ" ด้านล่างเพื่อเริ่มใหม่`;
-          subEl.style.color = '#38bdf8';
+          subEl.textContent = `❌ ${msg.message || 'คู่ต่อสู้ปฏิเสธคำท้าแข่งขันอีกรอบ'}`;
+          subEl.style.color = '#ef4444';
         }
+        showCustomAlert('❌ ปฏิเสธคำท้า', msg.message || 'คู่ต่อสู้ปฏิเสธคำท้าแข่งขันอีกรอบ', '❌');
       }
     }
 
@@ -5785,6 +5832,148 @@ const BLOCK_SKINS = [
       this.currentRoom = null;
       this.showView('main');
       this.refreshRooms();
+    }
+
+    clearVersusBoard() {
+      board = createEmptyBoard();
+      score = 0;
+      lines = 0;
+      level = 1;
+      comboCount = -1;
+      boardGlowIntensity = 0;
+      particles = [];
+      shockwaves = [];
+      shakeTimer = 0;
+      whiteFlashTimer = 0;
+      laserBeamTimer = 0;
+      comboTextTimer = 0;
+      lastWasSpecial = false;
+      isBombChainClear = false;
+      vsPendingGarbage = 0;
+      updateMainGarbageBarUI();
+
+      sprintElapsedMs = 0;
+      ultraTimeLeftMs = 120000;
+      tensionSurvivalTimer = 0;
+
+      holdPieceType = null;
+      canHold = true;
+      activePiece = null;
+
+      updateScoreUI();
+      updateComboUI();
+      initNextQueue();
+
+      renderOpponentMiniBoard([]);
+      const oppScoreEl = document.getElementById('oppScoreVal');
+      if (oppScoreEl) oppScoreEl.textContent = '0';
+      const oppLinesEl = document.getElementById('oppLinesVal');
+      if (oppLinesEl) oppLinesEl.textContent = '0';
+
+      const koEl = document.getElementById('oppKoOverlay');
+      if (koEl) koEl.classList.add('hidden');
+
+      this.myWins = 0;
+      this.oppWins = 0;
+      this.updateStarsUI();
+
+      // ล้างตารางและวาดกระดานใหม่ทันที บล็อกแตงโมและคะแนนเก่าจะหายไป 100%
+      renderBoard();
+      renderHold();
+      renderNext();
+    }
+
+    requestRematch() {
+      const btnRematch = document.getElementById('btnVsRematch');
+      if (btnRematch) {
+        btnRematch.disabled = true;
+        btnRematch.textContent = '⏳ รอคู่ต่อสู้ตอบรับคำท้า...';
+        btnRematch.classList.remove('btn-pulse');
+      }
+      const subEl = document.getElementById('vsWinnerSubtitle');
+      if (subEl) {
+        subEl.textContent = '⏳ ส่งคำขอแข่งขันอีกรอบแล้ว รอคู่ต่อสู้ยืนยัน...';
+        subEl.style.color = '#38bdf8';
+      }
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'REQUEST_REMATCH' }));
+      }
+    }
+
+    rejectRematch() {
+      const modal = document.getElementById('rematchPromptModal');
+      if (modal) modal.classList.add('hidden');
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'REJECT_REMATCH' }));
+      }
+    }
+
+    acceptRematchPrompt() {
+      const modal = document.getElementById('rematchPromptModal');
+      if (modal) modal.classList.add('hidden');
+      this.requestRematch();
+    }
+
+    showOpponentWantsRematch(requesterName) {
+      const modal = document.getElementById('rematchPromptModal');
+      const textEl = document.getElementById('rematchPromptText');
+      if (textEl) {
+        textEl.innerHTML = `⚡ <b>${requesterName}</b> ต้องการขอแข่งขันอีกรอบกับคุณ!<br>คุณต้องการเริ่มการแข่งขันใหม่หรือไม่?`;
+      }
+      if (modal) modal.classList.remove('hidden');
+
+      const subEl = document.getElementById('vsWinnerSubtitle');
+      if (subEl) {
+        subEl.textContent = `⚡ ${requesterName} ต้องการแข่งขันอีกรอบ! กดยอมรับคำท้าเพื่อเริ่มดวลใหม่`;
+        subEl.style.color = '#38bdf8';
+      }
+
+      const btnRematch = document.getElementById('btnVsRematch');
+      if (btnRematch) {
+        btnRematch.disabled = false;
+        btnRematch.textContent = '⚔️ กดยอมรับคำท้าแข่งอีกรอบ!';
+        btnRematch.classList.add('btn-pulse');
+      }
+    }
+
+    handleRematchAccepted(msg) {
+      const promptModal = document.getElementById('rematchPromptModal');
+      if (promptModal) promptModal.classList.add('hidden');
+      const vsGov = document.getElementById('vsGameOverOverlay');
+      if (vsGov) vsGov.classList.add('hidden');
+
+      const btnRematch = document.getElementById('btnVsRematch');
+      if (btnRematch) {
+        btnRematch.disabled = false;
+        btnRematch.textContent = '🔄 แข่งขันอีกรอบ (Rematch)';
+        btnRematch.classList.remove('btn-pulse');
+      }
+
+      // Ensure arena is visible
+      const vsArena = document.getElementById('versusArena');
+      if (vsArena) {
+        vsArena.classList.remove('hidden');
+        vsArena.style.display = '';
+      }
+      const lobby = document.getElementById('multiplayerLobby');
+      if (lobby) lobby.classList.add('hidden');
+
+      // ล้างตารางและข้อมูลเกมให้สะอาด 100%
+      this.clearVersusBoard();
+
+      if (msg.targetWins) this.targetWins = msg.targetWins;
+      if (msg.opponentName) this.opponentName = msg.opponentName;
+      if (msg.subMode) activeVsSubMode = msg.subMode;
+
+      const titleEl = document.getElementById('vsMatchTitle');
+      if (titleEl) {
+        titleEl.textContent = (this.targetWins === 1) ? 'BEST OF 1' : ((this.targetWins === 3) ? 'BEST OF 5' : 'BEST OF 3');
+      }
+
+      // รันนับถอยหลัง 3... 2... 1... START! แล้วเริ่มแข่งรอบใหม่
+      showCountdownAndStart(() => {
+        this.startNewVsRound();
+      });
     }
 
     updateWaitingUI() {
@@ -6892,15 +7081,32 @@ const BLOCK_SKINS = [
 
   // Versus Victory Modal Events
   safeOn('btnVsRematch', 'click', () => {
+    lobbyMgr.requestRematch();
+  });
+
+  safeOn('btnVsBackLobby', 'click', () => {
     const overlay = document.getElementById('vsGameOverOverlay');
     if (overlay) overlay.classList.add('hidden');
-    versusManager.startMatch();
+    versusManager.state = 'IDLE';
+    lobbyMgr.leaveRoom(true);
+    lobbyMgr.openLobby();
   });
 
   safeOn('btnVsBackMenu', 'click', () => {
     const overlay = document.getElementById('vsGameOverOverlay');
     if (overlay) overlay.classList.add('hidden');
+    versusManager.state = 'IDLE';
+    lobbyMgr.leaveRoom(true);
     openStartMenu();
+  });
+
+  // Rematch Prompt Modal Events
+  safeOn('btnAcceptRematchPrompt', 'click', () => {
+    lobbyMgr.acceptRematchPrompt();
+  });
+
+  safeOn('btnRejectRematchPrompt', 'click', () => {
+    lobbyMgr.rejectRematch();
   });
 
   safeOn('btnStartGame', 'click', () => {
@@ -7092,12 +7298,6 @@ const BLOCK_SKINS = [
       lobbyMgr.pendingJoinRoom = null;
     });
 
-    safeOn('btnVsBackLobby', 'click', () => {
-      const overlay = document.getElementById('vsGameOverOverlay');
-      if (overlay) overlay.classList.add('hidden');
-      versusManager.state = 'IDLE';
-      lobbyMgr.openLobby();
-    });
 
     // Custom Alert Modal confirmation
     safeOn('btnConfirmLobbyAlert', 'click', () => closeCustomAlert());
