@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="googlebot" content="noindex, nofollow, noarchive, nosnippet">
+<meta name="theme-color" content="#0a0d14">
+<title>Quadrate Game — Mobile & Tablet Optimized</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,500;0,700;0,800;1,700&family=Kanit:wght@300;400;500;600;700;800;900&family=Prompt:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="app-wrapper">
+  <!-- แถบด้านบน -->
+  <header class="top-bar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <span>QUADRATE GAME</span>
+      <span id="modeBadge" class="mode-badge">MODERN</span>
+      <span id="gameTimerBadge" class="timer-badge hidden">00:00.00</span>
+    </div>
+    <div class="top-actions">
+      <button id="btnRulesTop" class="btn-icon" title="คู่มือและกติกาการเล่น">📖 กติกา</button>
+      <button id="btnTrophies" class="btn-icon" title="ความสำเร็จ">🏆 ถ้วย</button>
+      <button id="btnSound" class="btn-icon" title="เสียง & ตั้งค่า">🔊 เสียง</button>
+      <button id="btnFullscreen" class="btn-icon" title="แสดงผลเต็มจอ">⛶ เต็มจอ</button>
+      <button id="btnPause" class="btn-icon" title="พัก">⏸ พัก</button>
+      <button id="btnRestartTop" class="btn-icon" title="เริ่มใหม่">🔄 เริ่มใหม่</button>
+    </div>
+  </header>
+
+  <!-- ป้ายแนะนำการเล่นบนจอสัมผัส -->
+  <div id="gestureHint" class="gesture-hint">👆 แตะในจอ = หมุนบล็อก | 👈👉 เลื่อนนิ้ว = ขยับ | 👇 รูดลง = ลงเร็ว | 👆 ปัดขึ้น = สลับชิ้น</div>
+
+  <!-- พื้นที่เล่นเกม -->
+  <main class="stage-area">
+    <!-- แผงซ้าย: Hold & สถิติ -->
+    <aside class="side-panel" id="leftPanel">
+      <div id="holdPanelBox" class="panel-box">
+        <div class="panel-title">HOLD (C)</div>
+        <canvas id="holdCanvas" class="mini-canvas"></canvas>
+      </div>
+      <div class="panel-box" id="scorePanelBox">
+        <div class="panel-title">SCORE</div>
+        <div id="scoreVal" class="panel-value highlight">0</div>
+      </div>
+      <div class="panel-box" id="bestPanelBox">
+        <div class="panel-title">BEST</div>
+        <div id="highScoreVal" class="panel-value">0</div>
+      </div>
+      <div class="panel-box" id="levelPanelBox">
+        <div class="panel-title">LEVEL</div>
+        <div id="levelVal" class="panel-value">1</div>
+      </div>
+      <div class="panel-box" id="linesPanelBox">
+        <div class="panel-title">LINES</div>
+        <div id="linesVal" class="panel-value">0</div>
+      </div>
+      <div id="comboPanelBox" class="panel-box">
+        <div class="panel-title">COMBO</div>
+        <div id="comboVal" class="panel-value highlight">×0</div>
+      </div>
+    </aside>
+
+    <!-- พื้นที่เล่นตรงกลาง -->
+    <div class="center-play-area">
+            <!-- Scoreboard Badge กลางจอโหมด Multiplayer -->
+      <div id="vsMatchBadge" class="vs-match-badge hidden">
+        <span class="vs-badge-star" id="myStarsVal">☆☆</span>
+        <span class="vs-badge-title" id="vsMatchTitle">BEST OF 3</span>
+        <span class="vs-badge-star" id="oppStarsBadgeVal">☆☆</span>
+      </div>
+      <div class="board-container" id="boardContainer">
+        <!-- แถบขยะสำหรับโหมด Multiplayer (Main Garbage Bar) -->
+        <div class="main-garbage-track hidden" id="mainGarbageTrack">
+          <div class="main-garbage-bar" id="mainGarbageBar"></div>
+        </div>
+        <canvas id="boardCanvas"></canvas>
+      </div>
+      <!-- แท่นวาง 3 บล็อกสำหรับโหมด Block Blast -->
+      <div id="blockBlastDock" class="block-blast-dock hidden">
+        <div class="bb-dock-slot" data-slot="0"><canvas id="bbDockCanvas0" class="bb-dock-canvas"></canvas></div>
+        <div class="bb-dock-slot" data-slot="1"><canvas id="bbDockCanvas1" class="bb-dock-canvas"></canvas></div>
+        <div class="bb-dock-slot" data-slot="2"><canvas id="bbDockCanvas2" class="bb-dock-canvas"></canvas></div>
+      </div>
+      <!-- Touch On-Screen Controls for Phone & Tablet (Classic, Modern, Sprint, Ultra) -->
+      <div id="mobileControls" class="mobile-controls">
+        <div class="mc-group mc-left">
+          <button type="button" id="btnMcLeft" class="mc-btn" aria-label="Left">◀</button>
+          <button type="button" id="btnMcDown" class="mc-btn" aria-label="Soft Drop">▼</button>
+          <button type="button" id="btnMcRight" class="mc-btn" aria-label="Right">▶</button>
+        </div>
+        <div class="mc-group mc-right">
+          <button type="button" id="btnMcHold" class="mc-btn mc-btn-sub" aria-label="Hold">HOLD</button>
+          <button type="button" id="btnMcRotCCW" class="mc-btn mc-btn-action" aria-label="Rotate CCW">↺</button>
+          <button type="button" id="btnMcRotCW" class="mc-btn mc-btn-action" aria-label="Rotate CW">↻</button>
+          <button type="button" id="btnMcHard" class="mc-btn mc-btn-action" aria-label="Hard Drop">⤓</button>
+        </div>
+      </div>
+      <!-- Floating Drag Canvas สำหรับลากบล็อกทั่วจอแบบสมูท 60fps ไม่จำกัดขอบกระดาน -->
+      <canvas id="bbDragCanvas" class="bb-drag-canvas"></canvas>
+    </div>
+
+    <!-- แผงขวา: Next Queue -->
+    <aside class="side-panel" id="rightPanel">
+            <!-- Opponent HUD Box (สำหรับโหมด Multiplayer Real-time) -->
+      <div class="panel-box vs-opp-box hidden" id="opponentPanelBox">
+        <div class="panel-title">⚔️ OPPONENT (คู่ต่อสู้)</div>
+        <div class="opp-info-header">
+          <span class="opp-name-text" id="oppNameVal">Player 2</span>
+          <span class="opp-stars-text" id="oppStarsVal">☆☆</span>
+        </div>
+        <div class="opp-stats-grid">
+          <div class="opp-stat-item">
+            <span class="opp-stat-label">SCORE</span>
+            <span class="opp-stat-value" id="oppScoreVal">0</span>
+          </div>
+          <div class="opp-stat-item">
+            <span class="opp-stat-label">LINES</span>
+            <span class="opp-stat-value" id="oppLinesVal">0</span>
+          </div>
+        </div>
+        <div class="opp-board-wrapper">
+          <canvas id="oppBoardCanvas" class="opp-mini-board" width="80" height="160"></canvas>
+          <div id="oppKoOverlay" class="opp-ko-overlay hidden">TOP OUT!</div>
+        </div>
+        <div class="opp-attack-msg" id="oppAttackMsg">
+          พร้อมประลอง Real-time
+        </div>
+      </div>
+      <div class="panel-box" id="nextPanelBox">
+        <div id="nextPanelTitle" class="panel-title">NEXT (3)</div>
+        <canvas id="nextCanvas" class="mini-canvas next-canvas"></canvas>
+      </div>
+    </aside>
+  
+
+  </main>
+
+  <!-- ปุ่มควบคุมสำหรับหน้าจอสัมผัส (มือถือและแท็บเล็ต) -->
+  
+</div>
+
+<!-- หน้าจอเริ่มต้น: เลือกโหมด -->
+<div id="startOverlay" class="overlay">
+  <div class="modal-card">
+    <h1 class="modal-title">QUADRATE GAME</h1>
+    <p class="modal-subtitle">เลือกรูปแบบการเล่นก่อนเข้าสู่เกม</p>
+
+    <div class="setup-section">
+      <span class="setup-label">🎮 เลือกโหมดการเล่น</span>
+      <div class="mode-selector" id="modeSelector">
+        <div class="mode-card" data-mode="Versus">
+          <div class="mode-card-title">⚔️ ออนไลน์ 2 คน (Online Multiplayer 1v1)</div>
+          <div class="mode-card-desc">ประลองสดออนไลน์แยกเครื่องผ่านระบบห้อง Lobby บล็อกแฟร์ 7-Bag ส่งแถวขยะรบกวนแบบ Real-Time!</div>
+        </div>
+        <div class="mode-card active" data-mode="Modern">
+          <div class="mode-card-title">✨ แบบใหม่ (Modern)</div>
+          <div class="mode-card-desc">สุ่ม 7-Bag, SRS, Ghost, Hold และดู 3 ชิ้นถัดไป</div>
+        </div>
+        <div class="mode-card" data-mode="BlockBlast">
+          <div class="mode-card-title">🧩 ลากบล็อก (Block Blast)</div>
+          <div class="mode-card-desc">สุ่ม 3 ชิ้นลากวางอิสระ ล้างแถวนอน/ตั้ง การันตีสุ่มชิ้นที่ลงได้เสมอ!</div>
+        </div>
+        <div class="mode-card" data-mode="Classic">
+          <div class="mode-card-title">🕹️ ดั้งเดิม (Classic)</div>
+          <div class="mode-card-desc">ต้นตำรับเรโทรแท้ 100% ไร้สกิน, กราฟิก Bevel Pixel NES, จานสีเปลี่ยนตามเลเวล, พรีวิว 1 ชิ้น, ไร้เงา/Hold, ล็อกไวสไตล์เรโทร</div>
+        </div>
+        <div class="mode-card" data-mode="Sprint">
+          <div class="mode-card-title">⏱️ จับเวลา (Sprint 40)</div>
+          <div class="mode-card-desc">ล้าง 40 แถวให้เร็วที่สุด มีตัวจับเวลามิลลิวินาที</div>
+        </div>
+        <div class="mode-card" data-mode="Ultra">
+          <div class="mode-card-title">⚡ 2 นาที (Ultra Blitz)</div>
+          <div class="mode-card-desc">แข่งทำคะแนนสูงสุดในเวลาจำกัด 120 วินาที</div>
+        </div>
+      </div>
+    </div>
+
+    <table class="controls-table">
+      <tr><td>มือถือ / แท็บเล็ต</td><td>ใช้ปุ่มสัมผัสด้านล่างหน้าจอได้ทันที</td></tr>
+      <tr><td>คีย์บอร์ด</td><td>← → เลื่อน, ↓ ลงเร็ว, Space วาง, ↑/X/Z หมุน, C/Shift Hold</td></tr>
+    </table>
+
+    <button id="btnOpenRulesFromStart" class="btn-secondary" style="margin-bottom:8px; width:100%; font-weight:700;">📖 ดูกติกา & ปุ่มควบคุมอย่างละเอียด</button>
+    <button id="btnStartGame" class="btn-primary">▶ เริ่มเล่นเกม</button>
+  </div>
+</div>
+
+<!-- หน้าจอหยุดเกมชั่วคราว (Pause) -->
+<div id="pauseOverlay" class="overlay hidden">
+  <div class="modal-card">
+    <h2 class="modal-title">พักการเล่นชั่วคราว</h2>
+    <p class="modal-subtitle">เวลาถูกหยุดไว้ชั่วคราว</p>
+    <button id="btnResumeGame" class="btn-primary">▶ เล่นต่อ (Resume)</button>
+    <button id="btnSettingsFromPause" class="btn-secondary">⚙️ ตั้งค่าเสียง & เอฟเฟกต์</button>
+    <button id="btnRestartFromPause" class="btn-secondary">🔄 เริ่มเกมใหม่ (โหมดเดิม)</button>
+    <button id="btnMenuFromPause" class="btn-secondary">🎮 เปลี่ยนโหมด / เมนูหลัก (Change Mode)</button>
+  </div>
+</div>
+
+<!-- หน้าจอจบเกม (Game Over) — บังคับส่ง Feedback ก่อนเล่นใหม่ -->
+<div id="gameOverOverlay" class="overlay hidden">
+  <div class="modal-card">
+    <h2 class="modal-title">GAME OVER</h2>
+    <p class="modal-subtitle">สรุปผลการเล่นของคุณ</p>
+
+    <div class="stats-grid">
+      <div class="stat-chip">
+        <span>โหมด</span>
+        <strong id="finalMode">Modern</strong>
+      </div>
+      <div class="stat-chip">
+        <span>คะแนน</span>
+        <strong id="finalScore">0</strong>
+      </div>
+      <div class="stat-chip">
+        <span>เลเวล</span>
+        <strong id="finalLevel">1</strong>
+      </div>
+      <div class="stat-chip">
+        <span>แถว</span>
+        <strong id="finalLines">0</strong>
+      </div>
+    </div>
+
+    <div class="feedback-section">
+      <h4>⭐ ให้คะแนน & ส่ง Feedback ก่อนเริ่มรอบใหม่</h4>
+      <span class="mandatory-badge">🔒 ส่งสถิติและ Feedback ด้านล่างเพื่อปลดล็อกปุ่มเล่นใหม่</span>
+
+      <div class="star-rating" id="starContainer">
+        <button type="button" class="star-btn active" data-star="1">★</button>
+        <button type="button" class="star-btn active" data-star="2">★</button>
+        <button type="button" class="star-btn active" data-star="3">★</button>
+        <button type="button" class="star-btn active" data-star="4">★</button>
+        <button type="button" class="star-btn active" data-star="5">★</button>
+      </div>
+
+      <input type="text" id="playerNameInput" class="form-input" placeholder="ชื่อผู้เล่น (เว้นว่าง = Anonymous)" maxlength="50">
+      <div class="anon-hint">* หากไม่กรอกชื่อ ระบบจะบันทึกเป็น "Anonymous" อัตโนมัติ</div>
+
+      <textarea id="feedbackInput" class="form-textarea" placeholder="พิมพ์ความคิดเห็นหรือข้อเสนอแนะเกี่ยวกับเกม... (จำเป็น)" maxlength="300" required></textarea>
+
+      <button type="button" id="btnSubmitFeedback" class="btn-primary" style="padding: 10px;">📤 ส่งสถิติและ Feedback เพื่อปลดล็อก</button>
+      <div id="feedbackStatus" class="status-msg"></div>
+    </div>
+
+    <button id="btnPlayAgain" class="btn-secondary" disabled>🔒 เล่นใหม่อีกครั้ง (ส่ง Feedback ก่อน)</button>
+    <button id="btnBackToMenu" class="btn-secondary" disabled>🔒 กลับหน้าเลือกโหมด (ส่ง Feedback ก่อน)</button>
+  </div>
+</div>
+
+
+<!-- หน้าจอตั้งค่าเสียงและเอฟเฟกต์ -->
+<div id="settingsOverlay" class="overlay hidden">
+  <div class="modal-card">
+    <h2 class="modal-title">🔊 เสียงและเอฟเฟกต์</h2>
+    <p class="modal-subtitle">ตั้งค่าเสียง BGM, SFX และเอฟเฟกต์ภาพ</p>
+
+    <div class="settings-group">
+      <!-- BGM Switch & Volume -->
+      <div class="settings-row" style="flex-direction: column; align-items: stretch;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div class="settings-label">🎵 เพลงประกอบ (BGM)</div>
+            <div class="settings-sublabel">Chiptune 8-bit ปรับจังหวะตามความตึงเครียด</div>
+          </div>
+          <label class="switch-label">
+            <input type="checkbox" id="chkToggleBgm" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="volume-slider-box">
+          <span style="font-size:0.75rem; color:var(--text-muted); min-width:40px;">ระดับ:</span>
+          <input type="range" id="sliderBgmVolume" class="volume-slider" min="0" max="100" value="40">
+          <span id="txtBgmVolume" style="font-size:0.75rem; min-width:32px; text-align:right;">40%</span>
+        </div>
+      </div>
+
+      <!-- SFX Switch & Volume -->
+      <div class="settings-row" style="flex-direction: column; align-items: stretch;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div class="settings-label">🔊 เอฟเฟกต์เสียง (SFX)</div>
+            <div class="settings-sublabel">เสียงเลื่อน หมุน ล็อก ล้างแถว Combo ระเบิด</div>
+          </div>
+          <label class="switch-label">
+            <input type="checkbox" id="chkToggleSfx" checked>
+            <span class="switch-slider"></span>
+          </label>
+        </div>
+        <div class="volume-slider-box">
+          <span style="font-size:0.75rem; color:var(--text-muted); min-width:40px;">ระดับ:</span>
+          <input type="range" id="sliderSfxVolume" class="volume-slider" min="0" max="100" value="60">
+          <span id="txtSfxVolume" style="font-size:0.75rem; min-width:32px; text-align:right;">60%</span>
+        </div>
+      </div>
+
+      <!-- Reduced Effects -->
+      <div class="settings-row">
+        <div>
+          <div class="settings-label">✨ ลดเอฟเฟกต์ (Reduced Effects)</div>
+          <div class="settings-sublabel">ปิดจอสั่นและแฟลชขาว ลดเศษไม้ (สำหรับผู้เวียนหัวง่าย)</div>
+        </div>
+        <label class="switch-label">
+          <input type="checkbox" id="chkReducedEffects">
+          <span class="switch-slider"></span>
+        </label>
+      </div>
+        <!-- Theme Selector -->
+        <div class="settings-row" style="flex-direction: column; align-items: stretch;">
+          <div>
+            <div class="settings-label">🎨 ธีมและสกินภาพของเกม</div>
+            <div class="settings-sublabel">เปลี่ยนบรรยากาศและสีสันของกระดานเกม</div>
+          </div>
+          <div class="theme-selector-grid">
+            <button type="button" class="theme-btn active" data-theme="midnight">🌌 มิดไนท์ออบซิเดียน</button>
+            <button type="button" class="theme-btn" data-theme="walnut">🪵 ไม้เฮอริเทจแอมเบอร์</button>
+            <button type="button" class="theme-btn" data-theme="aurora">🔮 แสงเหนือราตรี</button>
+            <button type="button" class="theme-btn" data-theme="emerald">🌿 เอเมอรัลด์เซน</button>
+          </div>
+        </div>
+        <!-- On-screen Touch Buttons Toggle -->
+        
+    </div>
+
+    <button id="btnCloseSettings" class="btn-primary">ตกลง / ปิดหน้าต่าง</button>
+  </div>
+</div>
+
+
+<!-- หน้าจอแสดงความสำเร็จ (Achievements Modal) -->
+<div id="achievementsOverlay" class="overlay hidden">
+  <div class="modal-card">
+    <h2 class="modal-title">🏆 ถ้วยรางวัล & ความสำเร็จ</h2>
+    <p class="modal-subtitle">ปลดล็อกเป้าหมายเพื่อรับเหรียญรางวัลพิเศษ</p>
+
+    <div id="achievementsList" class="achievements-grid"></div>
+
+    <button type="button" id="btnCloseAchievements" class="btn-primary">ปิดหน้าต่าง</button>
+  </div>
+</div>
+
+<!-- Toast แจ้งเตือนความสำเร็จ -->
+<div id="achievementToast" class="achievement-toast hide">
+  <div class="toast-icon" id="toastIcon">🏆</div>
+  <div class="toast-content">
+    <div class="toast-title">ปลดล็อกความสำเร็จ!</div>
+    <div class="toast-name" id="toastName">Tetris Master</div>
+    <div class="toast-desc" id="toastDesc">ล้าง 4 แถวพร้อมกันในครั้งเดียว</div>
+  </div>
+</div>
+
+
+<!-- ป๊อปอัปแจ้งเตือนเปลี่ยนสกิน (Skin Change Toast) -->
+<div id="skinChangeToast" class="skin-change-toast hide">
+  <span class="skin-toast-icon" id="skinToastIcon">🍉</span>
+  <span id="skinToastText">สกินใหม่: แตงโมฉ่ำ</span>
+</div>
+
+
+
+
+<!-- ==========================================
+     ห้องล็อบบี้แข่งขัน 2 คน (Multiplayer Lobby System)
+     ========================================== -->
+<div id="multiplayerLobby" class="overlay hidden" style="z-index: 1200;">
+  <div class="modal-card lobby-card">
+    <!-- Lobby Header -->
+    <div class="lobby-header">
+      <div class="lobby-header-left">
+        <h2 class="lobby-title">⚔️ MULTIPLAYER 1V1 LOBBY</h2>
+        <p class="lobby-subtitle">ระบบห้องแข่งขันประลองความเร็ว บล็อกแฟร์ 7-Bag และระบบส่งขยะ</p>
+      </div>
+
+      <div class="lobby-header-right">
+        <button type="button" id="btnLobbyBackMenu" class="btn-lobby-secondary">🔙 เมนูหลัก</button>
+      </div>
+    </div>
+
+    <!-- View 1: Main Lobby (Create Room + Room List) -->
+    <div id="lobbyMainView" class="lobby-views">
+      <div class="lobby-grid">
+        <!-- ฝั่งซ้าย: สร้างห้อง (Create Room) -->
+        <div class="lobby-panel create-panel">
+          <div class="lobby-panel-title">➕ สร้างห้องใหม่ (Host)</div>
+
+          <div class="lobby-form-group">
+            <label class="lobby-form-label">🎮 เลือกโหมดการแข่งขัน (เลือกได้ 5 โหมดก่อนสร้างห้อง):</label>
+            <div class="lobby-mode-picker" id="lobbyModePicker">
+              <button type="button" class="mode-pick-btn active" data-submode="Modern">
+                <span class="pick-icon">✨</span>
+                <span class="pick-name">แบบใหม่</span>
+                <span class="pick-tag">7-Bag + ไอเทม</span>
+              </button>
+              <button type="button" class="mode-pick-btn" data-submode="Classic">
+                <span class="pick-icon">🕹️</span>
+                <span class="pick-name">ดั้งเดิม</span>
+                <span class="pick-tag">เรโทร ไร้ไอเทม</span>
+              </button>
+              <button type="button" class="mode-pick-btn" data-submode="Sprint">
+                <span class="pick-icon">⏱️</span>
+                <span class="pick-name">Sprint 40</span>
+                <span class="pick-tag">แข่งล้าง 40 แถว</span>
+              </button>
+              <button type="button" class="mode-pick-btn" data-submode="Ultra">
+                <span class="pick-icon">⚡</span>
+                <span class="pick-name">Ultra Blitz</span>
+                <span class="pick-tag">แต้มสูงสุด 120s</span>
+              </button>
+              <button type="button" class="mode-pick-btn" data-submode="BlockBlast">
+                <span class="pick-icon">🧩</span>
+                <span class="pick-name">Block Blast</span>
+                <span class="pick-tag">ลาก 3 ชิ้นอิสระ</span>
+              </button>
+            </div>
+            <div class="lobby-desc-note" id="lobbySubModeDesc">
+              ✨ แบบใหม่: กติกามาตรฐาน สุ่ม 7-Bag, SRS, Ghost, ดู 3 ชิ้นถัดไป, และมีบล็อกพิเศษผสม
+            </div>
+          </div>
+
+          
+          <div class="lobby-form-group">
+            <label class="lobby-form-label" for="inputRoomName">ชื่อห้อง (Room Name):</label>
+            <input type="text" id="inputRoomName" class="lobby-input" placeholder="เช่น ห้องประลองความเร็ว" maxlength="24" value="ห้องประลอง #1">
+          </div>
+
+          <div class="lobby-form-group">
+            <label class="lobby-form-label" for="inputRoomPass">
+              รหัสผ่านห้อง (Room Password - ไม่ใส่ก็ได้):
+              <span class="lobby-hint">เว้นว่างหากเปิดเป็นห้องสาธารณะ</span>
+            </label>
+            <div class="password-input-wrap">
+              <input type="password" id="inputRoomPass" class="lobby-input" placeholder="รหัสผ่านห้อง (เว้นว่างได้)" maxlength="16">
+              <button type="button" id="btnToggleRoomPass" class="btn-pass-toggle" title="แสดง/ซ่อนรหัสผ่าน">👁️</button>
+            </div>
+          </div>
+
+          <div class="lobby-form-group">
+            <label class="lobby-form-label">รอบตัดสิน (Format):</label>
+            <div class="lobby-segmented" id="lobbyRoundsSegment">
+              <button type="button" class="seg-btn" data-rounds="1">Best of 1</button>
+              <button type="button" class="seg-btn active" data-rounds="2">Best of 3</button>
+              <button type="button" class="seg-btn" data-rounds="3">Best of 5</button>
+            </div>
+          </div>
+
+
+          <button type="button" id="btnCreateRoomSubmit" class="btn-lobby-primary" style="margin-top: 14px; width: 100%;">
+            🚀 สร้างห้องและเปิดรับผู้เล่น
+          </button>
+        </div>
+
+        <!-- ฝั่งขวา: รายการห้องที่เปิดอยู่ (Available Rooms) -->
+        <div class="lobby-panel list-panel">
+          <div class="lobby-panel-header">
+            <div class="lobby-panel-title">📋 รายการห้องที่เปิดอยู่</div>
+            <button type="button" id="btnRefreshRooms" class="btn-icon-refresh" title="รีเฟรชรายการห้อง">🔄 รีเฟรช</button>
+          </div>
+
+          <!-- ช่องค้นหาด้วยรหัสห้องด่วน -->
+          <div class="room-quick-join">
+            <input type="text" id="inputQuickCode" class="lobby-input" placeholder="ใส่รหัสห้อง (เช่น ROOM-1234)">
+            <button type="button" id="btnQuickJoin" class="btn-lobby-accent">ค้นหา / เข้า</button>
+          </div>
+
+          <!-- กล่องแสดงรายการห้อง -->
+          <div id="lobbyRoomList" class="lobby-room-list">
+            <!-- Rendered by JavaScript -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- View 2: Room Waiting Area (ห้องรอเริ่มเกม) -->
+    <div id="lobbyWaitingView" class="lobby-views hidden">
+      <div class="waiting-header">
+        <div>
+          <span class="waiting-room-tag" id="waitRoomTag">#ROOM-0000</span>
+          <h3 class="waiting-room-title" id="waitRoomTitle">ห้องประลอง</h3>
+        </div>
+        <div class="waiting-meta">
+          <span class="meta-chip highlight" id="waitRoomSubModeBadge">✨ โหมด: แบบใหม่ (Modern)</span>
+          <span class="meta-chip" id="waitRoomFormat">Best of 3</span>
+          <span class="meta-chip" id="waitRoomLock">🌐 สาธารณะ</span>
+          <span class="meta-chip" id="waitRoomModeBadge">🌐 ออนไลน์ 1v1</span>
+        </div>
+      </div>
+
+      <!-- ผู้เล่น 2 ฝั่ง -->
+      <div class="waiting-slots">
+        <!-- Player 1 Host Slot -->
+        <div class="player-slot host-slot" id="slotHost">
+          <div class="slot-avatar">👑</div>
+          <div class="slot-info">
+            <div class="slot-role">HOST (PLAYER 1)</div>
+            <div class="slot-name" id="waitHostName">Player 1</div>
+            <div class="slot-status ready">พร้อม (Ready)</div>
+          </div>
+          <div class="slot-controls">
+            <div class="controls-pill">🎮 เครื่องของคุณ (Host)</div>
+          </div>
+        </div>
+
+        <div class="slot-vs-badge">VS</div>
+
+        <!-- Player 2 Guest Slot -->
+        <div class="player-slot guest-slot" id="slotGuest">
+          <div class="slot-avatar" id="waitGuestAvatar">👤</div>
+          <div class="slot-info">
+            <div class="slot-role">GUEST (PLAYER 2)</div>
+            <div class="slot-name" id="waitGuestName">รอผู้เล่นเข้าร่วม...</div>
+            <div class="slot-status" id="waitGuestStatus">รอผู้เล่น...</div>
+          </div>
+          <div class="slot-controls">
+            <div class="controls-pill">🌐 ผู้เล่นออนไลน์ (Guest)</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Buttons in Waiting Room -->
+      <div class="waiting-actions">
+        <button type="button" id="btnLeaveRoom" class="btn-lobby-secondary">🚪 ออกจากห้อง</button>
+        <button type="button" id="btnStartMatch" class="btn-lobby-primary" style="font-size: 1.05rem; padding: 10px 28px;">
+          🚀 เริ่มการแข่งขันทันที!
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ใส่รหัสผ่านห้อง (Password Prompt Modal) -->
+<div id="roomPasswordModal" class="overlay hidden" style="z-index: 1300;">
+  <div class="modal-card" style="max-width: 380px;">
+    <h3 class="modal-title">🔒 ห้องนี้มีรหัสผ่าน</h3>
+    <p class="modal-subtitle" id="passPromptSub">กรุณาใส่รหัสผ่านเพื่อเข้าร่วมห้อง</p>
+    <div style="margin: 16px 0;">
+      <input type="password" id="inputJoinPassword" class="lobby-input" placeholder="ใส่รหัสผ่านห้อง" style="text-align:center; font-size:1.15rem; letter-spacing:2px;">
+      <div id="passErrorMsg" style="color:#ef4444; font-size:0.82rem; margin-top:6px; min-height:20px; text-align:center;"></div>
+    </div>
+    <div style="display:flex; gap:10px; justify-content:center;">
+      <button type="button" id="btnCancelPassModal" class="btn-secondary">ยกเลิก</button>
+      <button type="button" id="btnSubmitPassModal" class="btn-primary">ตกลง</button>
+    </div>
+  </div>
+</div>
+
+<!-- ==========================================
+     หน้าต่างกติกาและปุ่มควบคุมตั้งแต่เริ่มต้นเข้าเกม (Rules & Controls Guide)
+     ========================================== -->
+<div id="rulesOverlay" class="overlay">
+  <div class="modal-card rules-card">
+    <div class="rules-header">
+      <h1 class="modal-title">📖 กติกา & ปุ่มควบคุม QUADRATE GAME</h1>
+      <p class="modal-subtitle">โปรดอ่านทำความเข้าใจปุ่มกดและกติกาของแต่ละโหมดก่อนเข้าเล่น</p>
+    </div>
+
+    <!-- ปุ่มเลือกแท็บ -->
+    <div class="rules-tabs">
+      <button type="button" class="rules-tab-btn active" data-tab="tabControls">🎮 ปุ่มควบคุม</button>
+      <button type="button" class="rules-tab-btn" data-tab="tabModes">📜 กติกาของแต่ละโหมด</button>
+      <button type="button" class="rules-tab-btn" data-tab="tabSpecials">✨ บล็อกพิเศษใหม่ (Modern)</button>
+    </div>
+
+    <!-- แท็บที่ 1: ปุ่มควบคุม -->
+    <div class="rules-tab-content active" id="tabControls">
+      <div class="rules-section-title">🕹️ โหมดเล่นคนเดียว (Modern, Classic, Sprint, Ultra)</div>
+      <table class="rules-table">
+        <thead>
+          <tr>
+            <th>การกระทำ</th>
+            <th>คีย์บอร์ด (คอมพิวเตอร์)</th>
+            <th>มือถือ / แท็บเล็ต</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>เลื่อนซ้าย / ขวา</td>
+            <td><kbd>A</kbd> / <kbd>D</kbd> หรือ <kbd>←</kbd> / <kbd>→</kbd></td>
+            <td>ปุ่ม <kbd>◀</kbd> <kbd>▶</kbd> หรือลากนิ้วซ้ายขวา</td>
+          </tr>
+          <tr>
+            <td>ลงเร็ว (Soft Drop)</td>
+            <td><kbd>S</kbd> หรือ <kbd>↓</kbd></td>
+            <td>ปุ่ม <kbd>▼</kbd> หรือรูดนิ้วลง</td>
+          </tr>
+          <tr>
+            <td>ทิ้งดิ่งทันที (Hard Drop)</td>
+            <td><kbd>Spacebar</kbd> หรือ <kbd>W</kbd></td>
+            <td>ปุ่ม <kbd>⤓</kbd></td>
+          </tr>
+          <tr>
+            <td>หมุนตามเข็ม (CW)</td>
+            <td><kbd>E</kbd>, <kbd>K</kbd>, <kbd>↑</kbd>, <kbd>X</kbd></td>
+            <td>ปุ่ม <kbd>↻</kbd> หรือแตะจอ</td>
+          </tr>
+          <tr>
+            <td>หมุนทวนเข็ม (CCW)</td>
+            <td><kbd>Q</kbd>, <kbd>J</kbd>, <kbd>Z</kbd></td>
+            <td>ปุ่ม <kbd>↺</kbd></td>
+          </tr>
+          <tr>
+            <td>สลับพักบล็อก (Hold)</td>
+            <td><kbd>C</kbd> หรือ <kbd>Shift</kbd></td>
+            <td>ปุ่ม <kbd>HOLD</kbd> หรือปัดนิ้วขึ้น</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="rules-section-title">⚔️ โหมดแข่งออนไลน์ 2 คน (Online Multiplayer 1v1)</div>
+      <p style="font-size:0.82rem; color:var(--text-muted); margin-bottom:6px;">ผู้เล่นเล่นบนเครื่องของตนเอง ใช้ปุ่มควบคุมมาตรฐานของตนเอง (รองรับทั้งลูกศร และ WASD):</p>
+      <table class="rules-table">
+        <thead>
+          <tr>
+            <th>การกระทำ</th>
+            <th>ปุ่มหลัก (ลูกศร)</th>
+            <th>ปุ่มทางเลือก (WASD / มือโปร)</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>เลื่อนซ้าย / ขวา</td>
+            <td><kbd>←</kbd> / <kbd>→</kbd></td>
+            <td><kbd>A</kbd> / <kbd>D</kbd></td>
+          </tr>
+          <tr>
+            <td>ลงเร็ว (Soft Drop)</td>
+            <td><kbd>↓</kbd></td>
+            <td><kbd>S</kbd></td>
+          </tr>
+          <tr>
+            <td>ทิ้งดิ่ง (Hard Drop)</td>
+            <td><kbd>Spacebar</kbd></td>
+            <td><kbd>W</kbd> หรือ <kbd>↑</kbd></td>
+          </tr>
+          <tr>
+            <td>หมุนตามเข็ม (CW)</td>
+            <td><kbd>X</kbd> หรือ <kbd>↑</kbd></td>
+            <td><kbd>E</kbd> หรือ <kbd>K</kbd></td>
+          </tr>
+          <tr>
+            <td>หมุนทวนเข็ม (CCW)</td>
+            <td><kbd>Z</kbd></td>
+            <td><kbd>Q</kbd> หรือ <kbd>J</kbd></td>
+          </tr>
+          <tr>
+            <td>สลับพักบล็อก (Hold)</td>
+            <td><kbd>C</kbd></td>
+            <td><kbd>Shift ซ้าย</kbd> / <kbd>Shift ขวา</kbd></td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="rules-section-title">🧩 โหมดลากบล็อก (Block Blast)</div>
+      <p style="font-size:0.82rem; color:#cbd5e1;">ใช้เมาส์คลิกค้าง หรือแตะนิ้วลากชิ้นส่วน 3 ชิ้นจากแท่นด้านล่างขึ้นไปวางบนกระดานได้อย่างอิสระ</p>
+    </div>
+
+    <!-- แท็บที่ 2: กติกาของแต่ละโหมด -->
+    <div class="rules-tab-content" id="tabModes">
+      <div class="mode-desc-card" style="border-color:rgba(44,184,232,0.4);">
+        <h4 style="color:var(--accent);">⚔️ โหมดแข่งออนไลน์ 2 คน (Online Multiplayer 1v1)</h4>
+        <p>ประลองฝีมือออนไลน์แยกเครื่องแบบ Real-Time ผ่านระบบห้อง Lobby ชิงชัยแบบ <b>Best of 3 (หรือเลือกปรับได้)</b></p>
+        <ul>
+          <li><b>ชิ้นส่วนเท่าเทียม (Fair Sequence):</b> ผู้เล่นทั้งสองจะได้รับลำดับบล็อก 7-Bag เดียวกันเป๊ะ ไม่มีการได้เปรียบเสียเปรียบ</li>
+          <li><b>ระบบส่งแถวขยะ (Garbage Lines):</b> เมื่อเคลียร์แถวได้จะส่งแถวขยะไปดันบอร์ดของคู่ต่อสู้:
+            <ul style="margin-top:2px;">
+              <li>เคลียร์ 1 แถว (Single) = 0 แถวขยะ</li>
+              <li>เคลียร์ 2 แถว (Double) = ส่ง 1 แถวขยะ</li>
+              <li>เคลียร์ 3 แถว (Triple) = ส่ง 2 แถวขยะ</li>
+              <li>เคลียร์ 4 แถว (Tetris) = ส่ง 4 แถวขยะ</li>
+              <li>Back-to-Back Tetris = โบนัส +1 แถวขยะ (รวมเป็น 5 แถว)</li>
+              <li>Perfect Clear (ล้างเกลี้ยงกระดาน) = โบนัส +6 แถวขยะ</li>
+            </ul>
+          </li>
+          <li><b>การแก้ทาง & หักล้างขยะ (Countering):</b> หากมีขยะจ่อรอในเกจ การเคลียร์แถวจะนำขยะที่ได้ไปหักล้างขยะตนเองก่อน หากเหลือจึงจะยิงไปหาคู่แข่ง</li>
+          <li><b>เงื่อนไขแพ้ชนะ:</b> ผู้ใดที่บล็อกล้นชนเพดานกระดาน (Top-out) จะแพ้รอบนั้นทันที!</li>
+        </ul>
+      </div>
+
+      <div class="mode-desc-card">
+        <h4 style="color:#38bdf8;">✨ โหมดแบบใหม่ (Modern Mode)</h4>
+        <p>โหมดมาตรฐานสากลยุคใหม่ เล่นเพลิน สมดุล และเร้าใจ</p>
+        <ul>
+          <li>ระบบสุ่ม 7-Bag ที่เป็นธรรม ชิ้นส่วนไม่ออกซ้ำจนตัน</li>
+          <li>มีระบบเตะผนัง SRS (Super Rotation System) หมุนได้แม้ชิดขอบ</li>
+          <li>มีเงาตก Ghost Piece ช่วยเล็งจุดตก, มีช่อง Hold บล็อกสำรอง, และดู 3 ชิ้นถัดไป</li>
+          <li><b>ระบบบล็อกพิเศษแบบผสมรูปทรง (Hybrid Special Blocks):</b> ชิ้นพิเศษจะมาในรูปทรง Tetromino เต็มตัว มีแกนพลัง ระเบิด/เลเซอร์/หลุมดำ/ทองคำ</li>
+        </ul>
+      </div>
+
+      <div class="mode-desc-card">
+        <h4 style="color:#f59e0b;">🕹️ โหมดดั้งเดิม (Classic Retro Mode)</h4>
+        <p>ต้นตำรับเรโทรย้อนยุค NES แท้ 100% สำหรับผู้เล่นสายฮาร์ดคอร์</p>
+        <ul>
+          <li><b>กราฟิก NES ดั้งเดิม ไร้สกิน 100%:</b> บล็อก Bevel Pixel พร้อมจานสี 10 รูปแบบที่เปลี่ยนตามเลเวลแบบตลับ NES ดั้งเดิม</li>
+          <li><b>ระบบสุ่มตลับ NES (Authentic Pseudo-Random):</b> สุ่ม 7 ชิ้นมาตรฐานแบบเรโทรแท้ ไม่ใช้ 7-Bag ไร้บล็อกพิเศษโดยสิ้นเชิง</li>
+          <li><b>กติกาคลาสสิกเข้มข้น:</b> พรีวิวดูถัดไป 1 ชิ้น, ไร้เงาตก (No Ghost), ไร้ระบบ Hold, และไม่มีการหมุนขยับกำแพง (No Wall Kicks)</li>
+          <li><b>การตกและล็อกไว:</b> บล็อกล็อกลงกระดานทันทีเมื่อแตะพื้น และความเร็วเพิ่มขึ้นตามตาราง Frame ของเครื่อง NES จนถึง Killscreen เลเวล 29!</li>
+          <li><b>สูตรคะแนนต้นตำรับ:</b> 1 แถว = 40×Lv, 2 แถว = 100×Lv, 3 แถว = 300×Lv, 4 แถว (Tetris) = 1,200×Lv</li>
+        </ul>
+      </div>
+
+      <div class="mode-desc-card">
+        <h4 style="color:#a855f7;">🧩 โหมดลากบล็อก (Block Blast Mode)</h4>
+        <p>เกมพัซเซิลลากวางสุดเพลิน สไตล์ Block Puzzle ยอดฮิต</p>
+        <ul>
+          <li>บล็อกจะไม่ตกลงมาเอง คุณมีเวลาคิดคำนวณอย่างอิสระ</li>
+          <li>สุ่มบล็อก 3 ชิ้นที่แท่นด้านล่าง ลากไปวางตรงไหนก็ได้ในกระดาน</li>
+          <li>สามารถล้างแถวได้ทั้ง <b>แนวนอน และ แนวตั้ง</b> พร้อมกัน</li>
+          <li>มีระบบคำนวณอัจฉริยะ การันตีว่าจะมีบล็อกที่สามารถวางลงได้เสมอ</li>
+        </ul>
+      </div>
+
+      <div class="mode-desc-card">
+        <h4 style="color:#ec4899;">⏱️ โหมดจับเวลา (Sprint 40 Lines)</h4>
+        <p>แข่งขันกับเวลา ล้างแถวให้ครบ 40 แถวด้วยความเร็วสูงสุดเท่าที่จะทำได้ มีตัวจับเวลาระดับมิลลิวินาทีบันทึกสถิติที่ดีที่สุด</p>
+      </div>
+
+      <div class="mode-desc-card">
+        <h4 style="color:#eab308;">⚡ โหมด 2 นาที (Ultra Blitz)</h4>
+        <p>ทำคะแนนให้ได้สูงสุดในเวลาจำกัด 120 วินาที วางแผนทำ Combo และล้าง 4 แถว (Tetris) เพื่อโกยคะแนนทวีคูณ</p>
+      </div>
+    </div>
+
+    <!-- แท็บที่ 3: ระบบบล็อกพิเศษใหม่ -->
+    <div class="rules-tab-content" id="tabSpecials">
+      <div class="rules-section-title">✨ ระบบบล็อกพิเศษใหม่: ผสมกับรูปทรง Tetromino!</div>
+      <p style="font-size:0.85rem; color:#cbd5e1; margin-bottom:10px;">
+        ในโหมด Modern บล็อกพิเศษจะไม่ตกลงมาเป็นก้อนเดี่ยว 1 ช่องง่ายๆ อีกต่อไป! แต่จะมาใน <b>รูปทรง Tetromino ปกติ (I, O, T, S, Z, J, L)</b> โดยมีแกนพลังงานพิเศษฝังอยู่ในตัวชิ้นส่วน ทำให้คุณต้องหมุนและวางแผนหาตำแหน่งลงอย่างชาญฉลาด!
+      </p>
+
+      <div class="mode-desc-card" style="border-left:4px solid #ef4444;">
+        <h4 style="color:#ef4444;">💣 บล็อกระเบิด (Bomb Tetromino)</h4>
+        <p>เมื่อชิ้นส่วนล็อกลงบอร์ด จุดศูนย์กลางของระเบิดจะทำงาน <b>ระเบิดทำลายบล็อกรอบข้างขนาด 3×3 ช่อง</b> และบล็อกด้านบนจะตกลงมาด้วยแรงโน้มถ่วง เหมาะสำหรับระเบิดเปิดทางยามคับขัน</p>
+      </div>
+
+      <div class="mode-desc-card" style="border-left:4px solid #06b6d4;">
+        <h4 style="color:#06b6d4;">⚡ บล็อกสายฟ้าเลเซอร์ (Laser Zap Tetromino)</h4>
+        <p>เมื่อชิ้นส่วนล็อกลงบอร์ด แกนสายฟ้าจะ <b>ยิงลำแสงเลเซอร์ทำลายบล็อกตลอดทั้งแถวแนวนอน</b> ทันที ล้างแถวอย่างแม่นยำ</p>
+      </div>
+
+      <div class="mode-desc-card" style="border-left:4px solid #c084fc;">
+        <h4 style="color:#c084fc;">🌀 บล็อกพายุหลุมดำ (Vortex Tetromino)</h4>
+        <p>พลังหลุมดำมหาศาลจะ <b>ดูดกวาดทำลาย 2 แถวล่างสุดของกระดานทิ้งทันที</b> ช่วยลดความสูงของกระดานลงได้อย่างรวดเร็ว</p>
+      </div>
+
+      <div class="mode-desc-card" style="border-left:4px solid #facc15;">
+        <h4 style="color:#facc15;">✨ บล็อกทองคำ (Gold Multiplier Tetromino)</h4>
+        <p>ชิ้นส่วนจะล็อกลงบอร์ดเป็นบล็อกทองคำเรืองแสง และมอบคะแนนโบนัสพิเศษก้อนโตให้คุณทันที!</p>
+      </div>
+    </div>
+
+    <div class="rules-footer">
+      <button id="btnAcceptRules" class="btn-primary btn-large">
+        ✅ ฉันเข้าใจแล้ว เข้าสู่การเลือกโหมด ➔
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- หน้าต่างสรุปผลผู้ชนะโหมด Versus (Versus Victory Overlay) -->
+<div id="vsGameOverOverlay" class="overlay hidden">
+  <div class="modal-card vs-victory-card">
+    <div class="vs-winner-crown">👑</div>
+    <h1 class="modal-title" id="vsWinnerTitle">PLAYER 1 WINS!</h1>
+    <p class="modal-subtitle" id="vsWinnerSubtitle">ชนะการแข่งขัน 2 ใน 3 รอบ!</p>
+
+    <div class="vs-match-summary">
+      <div class="vs-summary-score">
+        <span id="vsSumP1" class="sum-p1">2</span>
+        <span>-</span>
+        <span id="vsSumP2" class="sum-p2">0</span>
+      </div>
+      <div class="vs-stats-grid">
+        <div class="vs-stat-col">
+          <div class="stat-head p1">PLAYER 1</div>
+          <div>แถวที่เคลียร์: <b id="vsStatLinesP1">0</b></div>
+          <div>ขยะที่ส่งไป: <b id="vsStatGarbageP1">0</b></div>
+        </div>
+        <div class="vs-stat-col">
+          <div class="stat-head p2">PLAYER 2</div>
+          <div>แถวที่เคลียร์: <b id="vsStatLinesP2">0</b></div>
+          <div>ขยะที่ส่งไป: <b id="vsStatGarbageP2">0</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-actions" style="display:flex; gap:10px; justify-content:center; margin-top:16px;">
+      <button id="btnVsRematch" class="btn-primary">🔄 แข่งขันอีกรอบ (Rematch)</button>
+      <button type="button" id="btnVsBackLobby" class="btn-secondary">📋 กลับห้องล็อบบี้</button>
+      <button id="btnVsBackMenu" class="btn-secondary">🏠 กลับสู่เมนูหลัก</button>
+    </div>
+  </div>
+</div>
+
+<script src="game.js"></script>
+</body>
+</html>
