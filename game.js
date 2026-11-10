@@ -2981,12 +2981,6 @@ function spawnRowParticles(fullRowIndices) {
 
   function startNewGame() {
     if (gameMode === 'BlockBlast') { initBlockBlastGame(); return; }
-    if (gameMode === 'Versus') {
-      if (typeof lobbyMgr !== 'undefined') {
-        lobbyMgr.openLobby();
-      }
-      return;
-    }
     loadSavedData();
     board = createEmptyBoard();
     applyModeUIRules();
@@ -3041,6 +3035,16 @@ function spawnRowParticles(fullRowIndices) {
   }
 
   function triggerGameOver() {
+    if (gameMode === 'Versus') {
+      gameState = 'GAMEOVER';
+      activePiece = null;
+      audioMgr.playGameOver();
+      if (typeof lobbyMgr !== 'undefined') {
+        lobbyMgr.handleLocalPlayerTopOut();
+      }
+      return;
+    }
+
     gameState = 'GAMEOVER';
     activePiece = null;
     audioMgr.gameOverBgm();
@@ -5508,6 +5512,12 @@ const BLOCK_SKINS = [
           this.updateWaitingUI();
         }
       } else if (msg.type === 'ROOM_CREATED') {
+        this.isCreatingRoom = false;
+        const btnSubmit = document.getElementById('btnCreateRoomSubmit');
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = '🚀 สร้างห้องและเปิดรับผู้เล่น';
+        }
         this.currentRoom = msg.room;
         this.isHost = true;
         this.showView('waiting');
@@ -5555,9 +5565,8 @@ const BLOCK_SKINS = [
         showCustomAlert('🚪 ห้องถูกปิดแล้ว', msg.message || 'เจ้าของห้องออกจากห้องแล้ว ระบบจะพากลับสู่ล็อบบี้', '🚪');
         this.leaveRoom(false);
       } else if (msg.type === 'MATCH_STARTED') {
-        this.targetWins = msg.targetWins || 2;
-        this.opponentName = this.isHost ? msg.guestName : msg.hostName;
-        this.startMatchCountdown();
+        this.isStartingMatch = false;
+        this.launchMatch(msg);
       } else if (msg.type === 'ROUND_STARTED') {
         this.myWins = this.isHost ? msg.p1Wins : msg.p2Wins;
         this.oppWins = this.isHost ? msg.p2Wins : msg.p1Wins;
@@ -5571,6 +5580,16 @@ const BLOCK_SKINS = [
         this.handleRoundOverServer(msg);
       } else if (msg.type === 'MATCH_OVER') {
         this.handleMatchOverServer(msg);
+      } else if (msg.type === 'REMATCH_ACCEPTED') {
+        this.currentRoom = msg.room;
+        this.isHost = msg.room.isHost;
+        this.resetToWaitingRoom();
+      } else if (msg.type === 'OPPONENT_WANTS_REMATCH') {
+        const subEl = document.getElementById('vsWinnerSubtitle');
+        if (subEl) {
+          subEl.textContent = `⚡ ${msg.requesterName || 'คู่ต่อสู้'} ต้องการแข่งขันอีกรอบ! กดปุ่ม "แข่งขันอีกรอบ" ด้านล่างเพื่อเริ่มใหม่`;
+          subEl.style.color = '#38bdf8';
+        }
       }
     }
 
@@ -5605,9 +5624,11 @@ const BLOCK_SKINS = [
         }
       } else if (msg.type === 'START_MATCH_SYNC') {
         if (this.currentRoom && this.currentRoom.id === msg.roomId) {
-          this.targetWins = msg.rounds || 2;
-          this.opponentName = this.isHost ? (this.currentRoom.guestName || 'Player 2') : (this.currentRoom.hostName || 'Host');
-          this.startMatchCountdown();
+          this.launchMatch({
+            targetWins: msg.rounds || 2,
+            opponentName: this.isHost ? (this.currentRoom.guestName || 'Player 2') : (this.currentRoom.hostName || 'Host'),
+            subMode: this.currentRoom ? this.currentRoom.subMode : 'Modern'
+          });
         }
       } else if (msg.type === 'OPPONENT_UPDATE') {
         this.handleOpponentUpdate(msg);
@@ -5615,6 +5636,8 @@ const BLOCK_SKINS = [
         receiveOpponentGarbage(msg.lines || 1);
       } else if (msg.type === 'PLAYER_TOP_OUT') {
         this.handleOpponentTopOut();
+      } else if (msg.type === 'REQUEST_REMATCH') {
+        this.resetToWaitingRoom();
       }
     }
 
@@ -5656,6 +5679,22 @@ const BLOCK_SKINS = [
     }
 
     createRoom(name, password, rounds) {
+      if (this.isCreatingRoom) return;
+      this.isCreatingRoom = true;
+
+      const btnSubmit = document.getElementById('btnCreateRoomSubmit');
+      if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.textContent = '⏳ กำลังสร้างห้อง...';
+      }
+      setTimeout(() => {
+        this.isCreatingRoom = false;
+        if (btnSubmit) {
+          btnSubmit.disabled = false;
+          btnSubmit.textContent = '🚀 สร้างห้องและเปิดรับผู้เล่น';
+        }
+      }, 2000);
+
       const myName = this.getPlayerName();
       const roomName = (name && name.trim()) ? name.trim() : ('ห้องของ ' + myName);
       const roomPass = (password && password.trim()) ? password.trim() : '';
@@ -5804,26 +5843,72 @@ const BLOCK_SKINS = [
       }
     }
 
-    startMatchCountdown() {
-      if (this.isHost) {
-        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-          this.ws.send(JSON.stringify({ type: 'START_MATCH' }));
-        } else {
-          this.broadcast('START_MATCH_SYNC', { roomId: this.currentRoom.id, rounds: this.currentRoom.rounds });
-        }
+    requestStartMatch() {
+      if (!this.isHost) return;
+      if (!this.currentRoom || !this.currentRoom.guestName) {
+        showCustomAlert('⏳ รอผู้เล่น', 'ยังไม่มีผู้เล่นฝ่ายตรงข้ามเข้าร่วมห้อง', '⏳');
+        return;
       }
+      if (this.isStartingMatch) return;
+      this.isStartingMatch = true;
+
+      const btnStart = document.getElementById('btnStartMatch');
+      if (btnStart) {
+        btnStart.disabled = true;
+        btnStart.textContent = '⏳ กำลังเริ่มเกม...';
+      }
+      setTimeout(() => {
+        this.isStartingMatch = false;
+        if (btnStart) {
+          btnStart.disabled = false;
+          btnStart.textContent = '⚔️ เริ่มการแข่งขันทันที (Start Match)';
+        }
+      }, 3000);
+
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        this.ws.send(JSON.stringify({ type: 'START_MATCH' }));
+      } else {
+        this.broadcast('START_MATCH_SYNC', { roomId: this.currentRoom.id, rounds: this.currentRoom.rounds });
+        this.launchMatch({
+          rounds: this.currentRoom.rounds || 2,
+          targetWins: this.currentRoom.rounds || 2,
+          subMode: this.currentRoom.subMode || 'Modern',
+          hostName: this.currentRoom.hostName,
+          guestName: this.currentRoom.guestName
+        });
+      }
+    }
+
+    startMatchCountdown() {
+      this.requestStartMatch();
+    }
+
+    launchMatch(msg = {}) {
+      this.isStartingMatch = false;
+      this.targetWins = msg.targetWins || msg.rounds || (this.currentRoom ? (this.currentRoom.rounds || 2) : 2);
+      this.opponentName = this.isHost 
+        ? (msg.guestName || (this.currentRoom ? this.currentRoom.guestName : 'Player 2') || 'Player 2') 
+        : (msg.hostName || (this.currentRoom ? this.currentRoom.hostName : 'Host') || 'Host');
+
+      activeVsSubMode = msg.subMode || (this.currentRoom ? this.currentRoom.subMode : 'Modern') || 'Modern';
 
       this.myWins = 0;
       this.oppWins = 0;
-      this.targetWins = this.currentRoom ? (this.currentRoom.rounds || 2) : 2;
-      this.opponentName = this.isHost ? (this.currentRoom ? (this.currentRoom.guestName || 'Player 2') : 'Player 2') : (this.currentRoom ? (this.currentRoom.hostName || 'Host') : 'Host');
 
-      activeVsSubMode = this.currentRoom ? (this.currentRoom.subMode || 'Modern') : 'Modern';
-
+      // Close all overlays & hide lobby
+      closeOverlays();
+      const vsArena = document.getElementById('versusArena');
+      if (vsArena) {
+        vsArena.classList.add('hidden');
+        vsArena.style.display = 'none';
+      }
       const lobby = document.getElementById('multiplayerLobby');
       if (lobby) lobby.classList.add('hidden');
 
-      setGameMode('Versus');
+      // Switch to Versus mode
+      gameMode = 'Versus';
+      document.body.classList.toggle('mode-versus', true);
+      applyModeUIRules();
       this.updateStarsUI();
 
       const oppNameEl = document.getElementById('oppNameVal');
@@ -6903,7 +6988,11 @@ const BLOCK_SKINS = [
   });
 
   // Wire Multiplayer Lobby UI Events (ภายใน IIFE Scope)
+  let lobbyEventsBound = false;
   function setupMultiplayerLobbyEvents() {
+    if (lobbyEventsBound) return;
+    lobbyEventsBound = true;
+
     safeOn('btnLobbyBackMenu', 'click', () => {
       lobbyMgr.leaveRoom(false);
       openStartMenu();
@@ -6994,7 +7083,7 @@ const BLOCK_SKINS = [
 
     safeOn('btnLeaveRoom', 'click', () => lobbyMgr.leaveRoom(true));
 
-    safeOn('btnStartMatch', 'click', () => lobbyMgr.startMatchCountdown());
+    safeOn('btnStartMatch', 'click', () => lobbyMgr.requestStartMatch());
 
     safeOn('btnSubmitPassModal', 'click', () => lobbyMgr.submitPasswordPrompt());
     safeOn('btnCancelPassModal', 'click', () => {
@@ -7019,7 +7108,4 @@ const BLOCK_SKINS = [
       });
     }
   }
-
-  // เรียกผูก Event ทันทีด้วย
-  setupMultiplayerLobbyEvents();
 })();
